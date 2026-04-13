@@ -1,0 +1,57 @@
+{
+    "datasets": [
+        {
+            "id": "geo_tnbc_113865",
+            "cancer_type": "Triple Negative Breast Cancer (TNBC)",
+            "source": "GEO (GSE113865)",
+            "gene_expression": {
+                "CDC45": "Upregulated",
+                "TK1": "Upregulated",
+                "TPX2": "Upregulated",
+                "FABP4": "Downregulated",
+                "KRT5": "Downregulated"
+            }
+        }
+    ],
+    "rules": [
+        {
+            "target_gene": "CDC45",
+            "condition": "Upregulated",
+            "recommended_drug": "Palbociclib (Off-label/Repurposed consideration)",
+            "mechanism": "CDC45 is essential for DNA replication. While Palbociclib primarily targets CDK4/6, its downstream effects impact cell cycle progression where CDC45 acts, potentially inhibiting rapid tumor division.",
+            "pathways": [
+                "Cell Cycle",
+                "DNA Replication"
+            ],
+            "docking_score": "-7.1 kcal/mol",
+            "evidence_level": "Computational / In vitro",
+            "protein_target": "Cell division cycle proteins"
+        },
+        {
+            "target_gene": "TK1",
+            "condition": "Upregulated",
+            "recommended_drug": "Fluorouracil (5-FU) / Capecitabine",
+            "mechanism": "Thymidine kinase 1 (TK1) is highly expressed in proliferating cells. 5-FU targets thymidylate synthase, a related pathway in DNA synthesis, exploiting the high nucleotide demand of the tumor.",
+            "pathways": [
+                "Pyrimidine metabolism",
+                "DNA Synthesis"
+            ],
+            "docking_score": "-6.5 kcal/mol",
+            "evidence_level": "Clinical / Established chemotherapy",
+            "protein_target": "Thymidylate synthase"
+        },
+        {
+            "target_gene": "TPX2",
+            "condition": "Upregulated",
+            "recommended_drug": "Paclitaxel / Alisertib",
+            "mechanism": "TPX2 is a microtubule nucleation factor. Microtubule-stabilizing drugs like Paclitaxel or Aurora A kinase inhibitors (Alisertib, since TPX2 regulates Aurora A) disrupt the mitotic spindle.",
+            "pathways": [
+                "Mitotic Spindle Formation",
+                "Aurora A signaling"
+            ],
+            "docking_score": "-8.0 kcal/mol",
+            "evidence_level": "Clinical trials (Alisertib) / Approved (Paclitaxel)",
+            "protein_target": "Aurora A kinase / Microtubules"
+        }
+    ]
+}
