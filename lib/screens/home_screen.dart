@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/oncology_data.dart';
+import '../models/cancer_signature.dart';
 import '../providers/data_provider.dart';
-import 'genomic_data_screen.dart';
 import 'ai_recommendation_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -22,7 +21,7 @@ class HomeScreen extends StatelessWidget {
           if (provider.errorMessage != null) {
             return Center(child: Text('Error: ${provider.errorMessage}'));
           }
-          if (provider.oncologyData == null || provider.oncologyData!.datasets.isEmpty) {
+          if (provider.signatures.isEmpty) {
             return const Center(child: Text('No datasets available'));
           }
 
@@ -32,7 +31,7 @@ class HomeScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const Text(
-                  'Select Cancer Dataset',
+                  'Select Cancer Profile',
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF0D47A1)),
                 ),
                 const SizedBox(height: 16),
@@ -42,21 +41,21 @@ class HomeScreen extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                     child: DropdownButtonHideUnderline(
-                      child: DropdownButton<Dataset>(
+                      child: DropdownButton<CancerSignature>(
                         isExpanded: true,
-                        value: provider.selectedDataset,
+                        value: provider.selectedSignature,
                         icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF1976D2)),
-                        onChanged: (Dataset? newValue) {
+                        onChanged: (CancerSignature? newValue) {
                           if (newValue != null) {
-                            provider.selectDataset(newValue);
+                            provider.selectSignature(newValue);
                           }
                         },
-                        items: provider.oncologyData!.datasets
-                            .map<DropdownMenuItem<Dataset>>((Dataset dataset) {
-                          return DropdownMenuItem<Dataset>(
-                            value: dataset,
+                        items: provider.signatures
+                            .map<DropdownMenuItem<CancerSignature>>((CancerSignature sig) {
+                          return DropdownMenuItem<CancerSignature>(
+                            value: sig,
                             child: Text(
-                              dataset.cancerType,
+                              sig.cancerName,
                               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                             ),
                           );
@@ -66,7 +65,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 24),
-                if (provider.selectedDataset != null)
+                if (provider.selectedSignature != null)
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -77,49 +76,32 @@ class HomeScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Source ID: ${provider.selectedDataset!.id}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                        Text('PMID: ${provider.selectedSignature!.pmid}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
                         const SizedBox(height: 8),
-                        Text('Data Source: ${provider.selectedDataset!.source}', style: const TextStyle(fontSize: 15)),
+                        Text('Sample Size: ${provider.selectedSignature!.sampleSize}', style: const TextStyle(fontSize: 15)),
+                        const SizedBox(height: 8),
+                        Text('Significant Genes: ${provider.selectedSignature!.significantGenes.length}', style: const TextStyle(fontSize: 15)),
                       ],
                     ),
                   ),
                 const Spacer(),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.biotech),
-                        label: const Text('View Genomic Data'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        onChanged: null,
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const GenomicDataScreen()),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
                 ElevatedButton.icon(
                   icon: const Icon(Icons.auto_awesome, color: Colors.white),
-                  label: const Text('Analyze with AI', style: TextStyle(fontSize: 18, color: Colors.white)),
+                  label: const Text('Analyze for Repurposing', style: TextStyle(fontSize: 18, color: Colors.white)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1976D2),
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     elevation: 4,
                   ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const AIRecommendationScreen()),
-                    );
+                  onPressed: () async {
+                    if (provider.selectedSignature != null) {
+                      provider.fetchRecommendations(provider.selectedSignature!);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const AIRecommendationScreen()),
+                      );
+                    }
                   },
                 ),
                 const SizedBox(height: 24),
