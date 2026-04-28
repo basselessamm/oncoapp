@@ -1,0 +1,249 @@
+[
+    {
+        "cancer_name": "TNBC: Immunomodulatory vs Luminal Androgen Receptor",
+        "pmid": "29622463",
+        "sample_size": 1084,
+        "significant_genes": [
+            {
+                "symbol": "CALHM6",
+                "frequency": "1.3",
+                "type": "Upregulated",
+                "p_value": "2.54e-04",
+                "log2fc": 1.3,
+                "higher_expression_in": "(A) Immunomodulatory"
+            },
+            {
+                "symbol": "AMY1B",
+                "frequency": "1.13",
+                "type": "Upregulated",
+                "p_value": "1.73e-04",
+                "log2fc": 1.13,
+                "higher_expression_in": "(A) Immunomodulatory"
+            },
+            {
+                "symbol": "SOCS3",
+                "frequency": "1.11",
+                "type": "Upregulated",
+                "p_value": "6.74e-05",
+                "log2fc": 1.11,
+                "higher_expression_in": "(A) Immunomodulatory"
+            },
+            {
+                "symbol": "PLSCR1",
+                "frequency": "0.8",
+                "type": "Upregulated",
+                "p_value": "1.06e-05",
+                "log2fc": 0.8,
+                "higher_expression_in": "(A) Immunomodulatory"
+            },
+            {
+                "symbol": "PNRC1",
+                "frequency": "0.68",
+                "type": "Upregulated",
+                "p_value": "1.41e-04",
+                "log2fc": 0.68,
+                "higher_expression_in": "(A) Immunomodulatory"
+            },
+            {
+                "symbol": "CNOT7",
+                "frequency": "0.54",
+                "type": "Upregulated",
+                "p_value": "2.45e-05",
+                "log2fc": 0.54,
+                "higher_expression_in": "(A) Immunomodulatory"
+            },
+            {
+                "symbol": "HECTD3",
+                "frequency": "-0.3",
+                "type": "Downregulated",
+                "p_value": "1.94e-06",
+                "log2fc": -0.3,
+                "higher_expression_in": "(B) Luminal Androgen Receptor"
+            },
+            {
+                "symbol": "PCYT1A",
+                "frequency": "-0.36",
+                "type": "Downregulated",
+                "p_value": "8.44e-05",
+                "log2fc": -0.36,
+                "higher_expression_in": "(B) Luminal Androgen Receptor"
+            },
+            {
+                "symbol": "CSNK1A1",
+                "frequency": "-0.37",
+                "type": "Downregulated",
+                "p_value": "6.64e-05",
+                "log2fc": -0.37,
+                "higher_expression_in": "(B) Luminal Androgen Receptor"
+            },
+            {
+                "symbol": "TNKS2",
+                "frequency": "-0.4",
+                "type": "Downregulated",
+                "p_value": "1.08e-04",
+                "log2fc": -0.4,
+                "higher_expression_in": "(B) Luminal Androgen Receptor"
+            },
+            {
+                "symbol": "STT3B",
+                "frequency": "-0.4",
+                "type": "Downregulated",
+                "p_value": "5.29e-05",
+                "log2fc": -0.4,
+                "higher_expression_in": "(B) Luminal Androgen Receptor"
+            },
+            {
+                "symbol": "PIK3C2A",
+                "frequency": "-0.42",
+                "type": "Downregulated",
+                "p_value": "6.36e-05",
+                "log2fc": -0.42,
+                "higher_expression_in": "(B) Luminal Androgen Receptor"
+            },
+            {
+                "symbol": "PCDHGB6",
+                "frequency": "-0.42",
+                "type": "Downregulated",
+                "p_value": "1.31e-05",
+                "log2fc": -0.42,
+                "higher_expression_in": "(B) Luminal Androgen Receptor"
+            },
+            {
+                "symbol": "RREB1",
+                "frequency": "-0.42",
+                "type": "Downregulated",
+                "p_value": "3.90e-05",
+                "log2fc": -0.42,
+                "higher_expression_in": "(B) Luminal Androgen Receptor"
+            },
+            {
+                "symbol": "DTX2P1-UPK3BP1-PMS2P11",
+                "frequency": "-0.45",
+                "type": "Downregulated",
+                "p_value": "1.58e-04",
+                "log2fc": -0.45,
+                "higher_expression_in": "(B) Luminal Androgen Receptor"
+            },
+            {
+                "symbol": "PRMT9",
+                "frequency": "-0.48",
+                "type": "Downregulated",
+                "p_value": "2.29e-04",
+                "log2fc": -0.48,
+                "higher_expression_in": "(B) Luminal Androgen Receptor"
+            },
+            {
+                "symbol": "ZBTB11",
+                "frequency": "-0.53",
+                "type": "Downregulated",
+                "p_value": "1.22e-04",
+                "log2fc": -0.53,
+                "higher_expression_in": "(B) Luminal Androgen Receptor"
+            },
+            {
+                "symbol": "RGPD5",
+                "frequency": "-0.54",
+                "type": "Downregulated",
+                "p_value": "8.70e-05",
+                "log2fc": -0.54,
+                "higher_expression_in": "(B) Luminal Androgen Receptor"
+            },
+            {
+                "symbol": "TAPT1",
+                "frequency": "-0.56",
+                "type": "Downregulated",
+                "p_value": "1.24e-04",
+                "log2fc": -0.56,
+                "higher_expression_in": "(B) Luminal Androgen Receptor"
+            },
+            {
+                "symbol": "SOS2",
+                "frequency": "-0.58",
+                "type": "Downregulated",
+                "p_value": "9.37e-06",
+                "log2fc": -0.58,
+                "higher_expression_in": "(B) Luminal Androgen Receptor"
+            },
+            {
+                "symbol": "TMEM184C",
+                "frequency": "-0.6",
+                "type": "Downregulated",
+                "p_value": "1.51e-04",
+                "log2fc": -0.6,
+                "higher_expression_in": "(B) Luminal Androgen Receptor"
+            },
+            {
+                "symbol": "PHKB",
+                "frequency": "-0.6",
+                "type": "Downregulated",
+                "p_value": "3.84e-05",
+                "log2fc": -0.6,
+                "higher_expression_in": "(B) Luminal Androgen Receptor"
+            },
+            {
+                "symbol": "SWAP70",
+                "frequency": "-0.62",
+                "type": "Downregulated",
+                "p_value": "1.29e-04",
+                "log2fc": -0.62,
+                "higher_expression_in": "(B) Luminal Androgen Receptor"
+            },
+            {
+                "symbol": "ZNF616",
+                "frequency": "-0.62",
+                "type": "Downregulated",
+                "p_value": "7.61e-05",
+                "log2fc": -0.62,
+                "higher_expression_in": "(B) Luminal Androgen Receptor"
+            },
+            {
+                "symbol": "PIGG",
+                "frequency": "-0.62",
+                "type": "Downregulated",
+                "p_value": "1.09e-05",
+                "log2fc": -0.62,
+                "higher_expression_in": "(B) Luminal Androgen Receptor"
+            },
+            {
+                "symbol": "MUCL1",
+                "frequency": "-2.61",
+                "type": "Downregulated",
+                "p_value": "4.48e-06",
+                "log2fc": -2.61,
+                "higher_expression_in": "(B) Luminal Androgen Receptor"
+            },
+            {
+                "symbol": "SERHL2",
+                "frequency": "-2.65",
+                "type": "Downregulated",
+                "p_value": "4.27e-07",
+                "log2fc": -2.65,
+                "higher_expression_in": "(B) Luminal Androgen Receptor"
+            },
+            {
+                "symbol": "DHRS2",
+                "frequency": "-2.69",
+                "type": "Downregulated",
+                "p_value": "7.99e-05",
+                "log2fc": -2.69,
+                "higher_expression_in": "(B) Luminal Androgen Receptor"
+            },
+            {
+                "symbol": "ABCC11",
+                "frequency": "-2.85",
+                "type": "Downregulated",
+                "p_value": "5.84e-06",
+                "log2fc": -2.85,
+                "higher_expression_in": "(B) Luminal Androgen Receptor"
+            },
+            {
+                "symbol": "CYP4Z2P",
+                "frequency": "-2.85",
+                "type": "Downregulated",
+                "p_value": "4.11e-06",
+                "log2fc": -2.85,
+                "higher_expression_in": "(B) Luminal Androgen Receptor"
+            }
+        ]
+    }
+]

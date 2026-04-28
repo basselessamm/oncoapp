@@ -1,68 +1,100 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import '../models/cancer_signature.dart';
+import 'package:flutter/services.dart';
 import '../models/drug_interaction.dart';
-import '../services/data_service.dart';
 import '../services/database_service.dart';
+import '../models/cancer_signature.dart';
 
 class DataProvider with ChangeNotifier {
-  final DataService _dataService = DataService();
-  final DatabaseService _databaseService = DatabaseService();
-
-  List<CancerSignature> _signatures = [];
-  CancerSignature? _selectedSignature;
+  List<CancerSignature> datasets = [];
+  CancerSignature? selectedDataset;
+  bool isLoading = true;
+  List<String> manualGenes = [];
+  bool isManualMode = false;
   
-  List<DrugInteraction> _recommendedDrugs = [];
-  
-  bool _isLoading = true;
-  bool _isAnalyzing = false;
-  String? _errorMessage;
-
-  List<CancerSignature> get signatures => _signatures;
-  CancerSignature? get selectedSignature => _selectedSignature;
-  List<DrugInteraction> get recommendedDrugs => _recommendedDrugs;
-  bool get isLoading => _isLoading;
-  bool get isAnalyzing => _isAnalyzing;
-  String? get errorMessage => _errorMessage;
+  List<DrugInteraction> aiRecommendations = []; 
+  List<DrugInteraction> searchResults = [];
+  bool isSearching = false;
 
   Future<void> loadData() async {
-    try {
-      _isLoading = true;
-      notifyListeners();
-      
-      _signatures = await _dataService.loadCancerSignatures();
-      if (_signatures.isNotEmpty) {
-        _selectedSignature = _signatures.first;
-      }
-      
-      _isLoading = false;
-      notifyListeners();
-    } catch (e) {
-      _errorMessage = e.toString();
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
+    isLoading = true;
+    notifyListeners();
 
-  void selectSignature(CancerSignature signature) {
-    _selectedSignature = signature;
+    try {
+      List<String> filePaths = [
+        'assets/data/Breast_Invasive_Carcinoma_TCGA/tcga_signatures.json',
+        'assets/data/Triple_Negative_Breast_Cancer_DLDCCC/basal_like1_vs_mesenchymal.json',
+        'assets/data/Triple_Negative_Breast_Cancer_DLDCCC/immunomodulatory_vs_luminal_androgen.json',
+        'assets/data/Triple_Negative_Breast_Cancer_DLDCCC/mesenchymal_vs_immunomodulatory.json'
+      ];
+      
+      datasets = [];
+      for (String path in filePaths) {
+        try {
+          String jsonString = await rootBundle.loadString(path);
+          final List<dynamic> jsonData = json.decode(jsonString);
+          datasets.addAll(jsonData.map((i) => CancerSignature.fromJson(i)).toList());
+        } catch (e) {
+          print("Error loading JSON $path: $e");
+        }
+      }
+
+      if (datasets.isNotEmpty) selectedDataset = datasets.first;
+    } catch (e) {
+      print("Error loading datasets: $e");
+    }
+
+    isLoading = false;
     notifyListeners();
   }
 
-  Future<void> fetchRecommendations(CancerSignature selectedCancer) async {
+  void selectDataset(CancerSignature dataset) {
+    selectedDataset = dataset;
+    isManualMode = false;
+    notifyListeners();
+  }
+
+  void setManualGenes(String input) {
+    if (input.trim().isEmpty) {
+      isManualMode = false;
+      manualGenes = [];
+    } else {
+      isManualMode = true;
+      manualGenes = input.split(',').map((e) => e.trim().toUpperCase()).toList();
+    }
+    notifyListeners();
+  }
+
+  Future<void> fetchRecommendationsFromDB() async {
+    isLoading = true;
+    notifyListeners();
+
+    List<String> genesToSearch = [];
+
+    if (isManualMode && manualGenes.isNotEmpty) {
+      genesToSearch = manualGenes;
+    } else if (selectedDataset != null) {
+      genesToSearch = selectedDataset!.significantGenes.map((g) => g.symbol).toList();
+    }
+
+    aiRecommendations = await DatabaseService().getDrugsForGenes(genesToSearch);
+
+    isLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> searchNovelDrugs(String query) async {
     try {
-      _isAnalyzing = true;
+      isSearching = true;
+      searchResults = [];
       notifyListeners();
 
-      // Extract gene symbols
-      final List<String> geneSymbols = selectedCancer.significantGenes.map((e) => e.symbol).toList();
-      
-      _recommendedDrugs = await _databaseService.getDrugsForGenes(geneSymbols);
+      searchResults = await DatabaseService().searchNovelDrugs(query);
 
-      _isAnalyzing = false;
+      isSearching = false;
       notifyListeners();
     } catch (e) {
-      _errorMessage = e.toString();
-      _isAnalyzing = false;
+      isSearching = false;
       notifyListeners();
     }
   }

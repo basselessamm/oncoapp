@@ -1,0 +1,249 @@
+[
+    {
+        "cancer_name": "Breast Invasive Carcinoma (TCGA, PanCancer Atlas)",
+        "pmid": "29622463",
+        "sample_size": 1084,
+        "significant_genes": [
+            {
+                "symbol": "HORMAD1",
+                "frequency": "5.18",
+                "type": "Upregulated",
+                "p_value": "1.01e-18",
+                "log2fc": 5.18,
+                "higher_expression_in": "(A) BRCA_Basal"
+            },
+            {
+                "symbol": "PRAME",
+                "frequency": "4.95",
+                "type": "Upregulated",
+                "p_value": "8.09e-12",
+                "log2fc": 4.95,
+                "higher_expression_in": "(A) BRCA_Basal"
+            },
+            {
+                "symbol": "CT83",
+                "frequency": "4.48",
+                "type": "Upregulated",
+                "p_value": "2.54e-25",
+                "log2fc": 4.48,
+                "higher_expression_in": "(A) BRCA_Basal"
+            },
+            {
+                "symbol": "CA9",
+                "frequency": "4.26",
+                "type": "Upregulated",
+                "p_value": "3.63e-11",
+                "log2fc": 4.26,
+                "higher_expression_in": "(A) BRCA_Basal"
+            },
+            {
+                "symbol": "ART3",
+                "frequency": "4.04",
+                "type": "Upregulated",
+                "p_value": "7.46e-15",
+                "log2fc": 4.04,
+                "higher_expression_in": "(A) BRCA_Basal"
+            },
+            {
+                "symbol": "AFAP1-AS1",
+                "frequency": "3.77",
+                "type": "Upregulated",
+                "p_value": "2.39e-23",
+                "log2fc": 3.77,
+                "higher_expression_in": "(A) BRCA_Basal"
+            },
+            {
+                "symbol": "KIF1A",
+                "frequency": "3.75",
+                "type": "Upregulated",
+                "p_value": "1.28e-12",
+                "log2fc": 3.75,
+                "higher_expression_in": "(A) BRCA_Basal"
+            },
+            {
+                "symbol": "A2ML1",
+                "frequency": "3.67",
+                "type": "Upregulated",
+                "p_value": "4.25e-08",
+                "log2fc": 3.67,
+                "higher_expression_in": "(A) BRCA_Basal"
+            },
+            {
+                "symbol": "MSLN",
+                "frequency": "3.6",
+                "type": "Upregulated",
+                "p_value": "1.35e-07",
+                "log2fc": 3.6,
+                "higher_expression_in": "(A) BRCA_Basal"
+            },
+            {
+                "symbol": "ACTL8",
+                "frequency": "3.46",
+                "type": "Upregulated",
+                "p_value": "6.09e-11",
+                "log2fc": 3.46,
+                "higher_expression_in": "(A) BRCA_Basal"
+            },
+            {
+                "symbol": "TLX1",
+                "frequency": "3.34",
+                "type": "Upregulated",
+                "p_value": "3.42e-08",
+                "log2fc": 3.34,
+                "higher_expression_in": "(A) BRCA_Basal"
+            },
+            {
+                "symbol": "ZIC1",
+                "frequency": "3.29",
+                "type": "Upregulated",
+                "p_value": "5.65e-09",
+                "log2fc": 3.29,
+                "higher_expression_in": "(A) BRCA_Basal"
+            },
+            {
+                "symbol": "GABBR2",
+                "frequency": "3.21",
+                "type": "Upregulated",
+                "p_value": "6.72e-10",
+                "log2fc": 3.21,
+                "higher_expression_in": "(A) BRCA_Basal"
+            },
+            {
+                "symbol": "NMU",
+                "frequency": "3.19",
+                "type": "Upregulated",
+                "p_value": "1.02e-10",
+                "log2fc": 3.19,
+                "higher_expression_in": "(A) BRCA_Basal"
+            },
+            {
+                "symbol": "COL22A1",
+                "frequency": "3.15",
+                "type": "Upregulated",
+                "p_value": "6.29e-14",
+                "log2fc": 3.15,
+                "higher_expression_in": "(A) BRCA_Basal"
+            },
+            {
+                "symbol": "POU4F1",
+                "frequency": "3.08",
+                "type": "Upregulated",
+                "p_value": "7.49e-21",
+                "log2fc": 3.08,
+                "higher_expression_in": "(A) BRCA_Basal"
+            },
+            {
+                "symbol": "IL12RB2",
+                "frequency": "3.07",
+                "type": "Upregulated",
+                "p_value": "1.33e-12",
+                "log2fc": 3.07,
+                "higher_expression_in": "(A) BRCA_Basal"
+            },
+            {
+                "symbol": "PRSS33",
+                "frequency": "3.01",
+                "type": "Upregulated",
+                "p_value": "5.84e-12",
+                "log2fc": 3.01,
+                "higher_expression_in": "(A) BRCA_Basal"
+            },
+            {
+                "symbol": "MKRN3",
+                "frequency": "2.93",
+                "type": "Upregulated",
+                "p_value": "7.02e-12",
+                "log2fc": 2.93,
+                "higher_expression_in": "(A) BRCA_Basal"
+            },
+            {
+                "symbol": "TCAM1P",
+                "frequency": "2.92",
+                "type": "Upregulated",
+                "p_value": "8.67e-15",
+                "log2fc": 2.92,
+                "higher_expression_in": "(A) BRCA_Basal"
+            },
+            {
+                "symbol": "ZNF695",
+                "frequency": "2.89",
+                "type": "Upregulated",
+                "p_value": "4.95e-14",
+                "log2fc": 2.89,
+                "higher_expression_in": "(A) BRCA_Basal"
+            },
+            {
+                "symbol": "FBN3",
+                "frequency": "2.84",
+                "type": "Upregulated",
+                "p_value": "2.61e-07",
+                "log2fc": 2.84,
+                "higher_expression_in": "(A) BRCA_Basal"
+            },
+            {
+                "symbol": "CCKBR",
+                "frequency": "2.83",
+                "type": "Upregulated",
+                "p_value": "1.42e-12",
+                "log2fc": 2.83,
+                "higher_expression_in": "(A) BRCA_Basal"
+            },
+            {
+                "symbol": "CXORF49B",
+                "frequency": "2.83",
+                "type": "Upregulated",
+                "p_value": "3.29e-15",
+                "log2fc": 2.83,
+                "higher_expression_in": "(A) BRCA_Basal"
+            },
+            {
+                "symbol": "MMP12",
+                "frequency": "2.83",
+                "type": "Upregulated",
+                "p_value": "9.33e-07",
+                "log2fc": 2.83,
+                "higher_expression_in": "(A) BRCA_Basal"
+            },
+            {
+                "symbol": "PIP",
+                "frequency": "-5.99",
+                "type": "Downregulated",
+                "p_value": "1.24e-12",
+                "log2fc": -5.99,
+                "higher_expression_in": "(B) BRCA_Normal"
+            },
+            {
+                "symbol": "TFF1",
+                "frequency": "-6.13",
+                "type": "Downregulated",
+                "p_value": "1.11e-10",
+                "log2fc": -6.13,
+                "higher_expression_in": "(B) BRCA_Normal"
+            },
+            {
+                "symbol": "HMGCS2",
+                "frequency": "-6.54",
+                "type": "Downregulated",
+                "p_value": "3.73e-13",
+                "log2fc": -6.54,
+                "higher_expression_in": "(B) BRCA_Normal"
+            },
+            {
+                "symbol": "MUCL1",
+                "frequency": "-6.64",
+                "type": "Downregulated",
+                "p_value": "1.20e-10",
+                "log2fc": -6.64,
+                "higher_expression_in": "(B) BRCA_Normal"
+            },
+            {
+                "symbol": "SCGB2A2",
+                "frequency": "-7.32",
+                "type": "Downregulated",
+                "p_value": "4.14e-14",
+                "log2fc": -7.32,
+                "higher_expression_in": "(B) BRCA_Normal"
+            }
+        ]
+    }
+]

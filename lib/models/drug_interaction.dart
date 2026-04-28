@@ -25,9 +25,9 @@ class DrugInteraction {
       drug: map['drug']?.toString() ?? '',
       interaction: map['interaction']?.toString() ?? '',
       targetCategory: map['target_category']?.toString() ?? '',
-      isNovel: map['is_novel'] as int? ?? 0,
-      score: (map['score'] as num?)?.toDouble() ?? 0.0,
-      dockingScore: (map['docking_score'] as num?)?.toDouble() ?? -6.5,
+      isNovel: (map['is_novel'] is int) ? map['is_novel'] : int.tryParse(map['is_novel']?.toString() ?? '0') ?? 0,
+      score: double.tryParse(map['score']?.toString() ?? '0') ?? 0.0,
+      dockingScore: double.tryParse(map['docking_score']?.toString() ?? '-6.5') ?? -6.5,
       source: map['source']?.toString() ?? '',
     );
   }

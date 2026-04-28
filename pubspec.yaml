@@ -15,6 +15,7 @@ dependencies:
   path_provider: ^2.1.5
   provider: ^6.1.5+1 # Adding provider for state management
   sqflite: ^2.4.2
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:
@@ -26,5 +27,6 @@ flutter:
 
   assets:
     # - assets/oncology_data.json
-    - assets/data/tcga_signatures.json
+    - assets/data/Breast_Invasive_Carcinoma_TCGA/
+    - assets/data/Triple_Negative_Breast_Cancer_DLDCCC/
     - assets/db/breast_cancer_clean.db

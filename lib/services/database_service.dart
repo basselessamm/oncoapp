@@ -23,22 +23,20 @@ class DatabaseService {
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
     String path = join(documentsDirectory.path, "breast_cancer_clean.db");
 
-    bool exists = await databaseExists(path);
+    // Always copy the latest DB from assets to ensure updates are reflected
+    try {
+      await Directory(dirname(path)).create(recursive: true);
+    } catch (_) {}
 
-    if (!exists) {
-      // Make sure the parent directory exists
-      try {
-        await Directory(dirname(path)).create(recursive: true);
-      } catch (_) {}
-
-      // Copy from asset
-      ByteData data = await rootBundle.load("assets/db/breast_cancer_clean.db");
-      List<int> bytes = 
-          data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
-
-      // Write and flush the bytes written
-      await File(path).writeAsBytes(bytes, flush: true);
+    // Delete old DB if exists and re-copy
+    if (await databaseExists(path)) {
+      await deleteDatabase(path);
     }
+
+    ByteData data = await rootBundle.load("assets/db/breast_cancer_clean.db");
+    List<int> bytes = 
+        data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+    await File(path).writeAsBytes(bytes, flush: true);
 
     // Open the database
     return await openDatabase(path);
@@ -70,6 +68,36 @@ class DatabaseService {
     ''';
 
     final List<Map<String, dynamic>> maps = await db.rawQuery(query, genes);
+
+    return List.generate(maps.length, (i) {
+      return DrugInteraction.fromMap(maps[i]);
+    });
+  }
+
+  Future<List<DrugInteraction>> searchNovelDrugs(String query) async {
+    if (query.isEmpty) return [];
+
+    final db = await database;
+    
+    // البحث عن الأدوية الـ Novel فقط مع تجميع لفرز الأسماء بشكل فريد
+    final sql = '''
+      SELECT 
+        gene, 
+        drug, 
+        interaction, 
+        target_category, 
+        is_novel, 
+        score, 
+        docking_score,
+        source
+      FROM drug_interactions 
+      WHERE drug LIKE ? AND is_novel = 1
+      GROUP BY drug
+      ORDER BY score DESC
+      LIMIT 20
+    ''';
+
+    final List<Map<String, dynamic>> maps = await db.rawQuery(sql, ['%$query%']);
 
     return List.generate(maps.length, (i) {
       return DrugInteraction.fromMap(maps[i]);

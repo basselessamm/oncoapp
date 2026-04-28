@@ -1,0 +1,249 @@
+[
+    {
+        "cancer_name": "TNBC: Basal-Like 1 vs Mesenchymal",
+        "pmid": "29622463",
+        "sample_size": 1084,
+        "significant_genes": [
+            {
+                "symbol": "ART3",
+                "frequency": "1.82",
+                "type": "Upregulated",
+                "p_value": "2.10e-04",
+                "log2fc": 1.82,
+                "higher_expression_in": "(A) Basal-Like 1"
+            },
+            {
+                "symbol": "NELL1",
+                "frequency": "1.67",
+                "type": "Upregulated",
+                "p_value": "1.21e-01",
+                "log2fc": 1.67,
+                "higher_expression_in": "(A) Basal-Like 1"
+            },
+            {
+                "symbol": "MOG",
+                "frequency": "1.59",
+                "type": "Upregulated",
+                "p_value": "9.62e-03",
+                "log2fc": 1.59,
+                "higher_expression_in": "(A) Basal-Like 1"
+            },
+            {
+                "symbol": "CXORF49",
+                "frequency": "1.57",
+                "type": "Upregulated",
+                "p_value": "3.00e-03",
+                "log2fc": 1.57,
+                "higher_expression_in": "(A) Basal-Like 1"
+            },
+            {
+                "symbol": "RFX4",
+                "frequency": "1.52",
+                "type": "Upregulated",
+                "p_value": "1.30e-02",
+                "log2fc": 1.52,
+                "higher_expression_in": "(A) Basal-Like 1"
+            },
+            {
+                "symbol": "TLX1",
+                "frequency": "1.43",
+                "type": "Upregulated",
+                "p_value": "1.29e-03",
+                "log2fc": 1.43,
+                "higher_expression_in": "(A) Basal-Like 1"
+            },
+            {
+                "symbol": "RNF182",
+                "frequency": "1.39",
+                "type": "Upregulated",
+                "p_value": "1.67e-02",
+                "log2fc": 1.39,
+                "higher_expression_in": "(A) Basal-Like 1"
+            },
+            {
+                "symbol": "CTAG1B",
+                "frequency": "1.36",
+                "type": "Upregulated",
+                "p_value": "3.10e-01",
+                "log2fc": 1.36,
+                "higher_expression_in": "(A) Basal-Like 1"
+            },
+            {
+                "symbol": "RPRML",
+                "frequency": "1.36",
+                "type": "Upregulated",
+                "p_value": "4.75e-02",
+                "log2fc": 1.36,
+                "higher_expression_in": "(A) Basal-Like 1"
+            },
+            {
+                "symbol": "CTAG1A",
+                "frequency": "1.32",
+                "type": "Upregulated",
+                "p_value": "3.03e-01",
+                "log2fc": 1.32,
+                "higher_expression_in": "(A) Basal-Like 1"
+            },
+            {
+                "symbol": "TM4SF4",
+                "frequency": "1.32",
+                "type": "Upregulated",
+                "p_value": "4.90e-02",
+                "log2fc": 1.32,
+                "higher_expression_in": "(A) Basal-Like 1"
+            },
+            {
+                "symbol": "MYBPH",
+                "frequency": "1.3",
+                "type": "Upregulated",
+                "p_value": "7.94e-04",
+                "log2fc": 1.3,
+                "higher_expression_in": "(A) Basal-Like 1"
+            },
+            {
+                "symbol": "CXORF49B",
+                "frequency": "1.25",
+                "type": "Upregulated",
+                "p_value": "3.20e-02",
+                "log2fc": 1.25,
+                "higher_expression_in": "(A) Basal-Like 1"
+            },
+            {
+                "symbol": "LMX1A",
+                "frequency": "1.24",
+                "type": "Upregulated",
+                "p_value": "9.17e-02",
+                "log2fc": 1.24,
+                "higher_expression_in": "(A) Basal-Like 1"
+            },
+            {
+                "symbol": "LINP1",
+                "frequency": "1.24",
+                "type": "Upregulated",
+                "p_value": "9.32e-02",
+                "log2fc": 1.24,
+                "higher_expression_in": "(A) Basal-Like 1"
+            },
+            {
+                "symbol": "PRSS3",
+                "frequency": "1.24",
+                "type": "Upregulated",
+                "p_value": "3.55e-03",
+                "log2fc": 1.24,
+                "higher_expression_in": "(A) Basal-Like 1"
+            },
+            {
+                "symbol": "RP1",
+                "frequency": "1.2",
+                "type": "Upregulated",
+                "p_value": "3.51e-04",
+                "log2fc": 1.2,
+                "higher_expression_in": "(A) Basal-Like 1"
+            },
+            {
+                "symbol": "SIM1",
+                "frequency": "1.18",
+                "type": "Upregulated",
+                "p_value": "5.10e-02",
+                "log2fc": 1.18,
+                "higher_expression_in": "(A) Basal-Like 1"
+            },
+            {
+                "symbol": "SLC52A1",
+                "frequency": "1.18",
+                "type": "Upregulated",
+                "p_value": "5.36e-02",
+                "log2fc": 1.18,
+                "higher_expression_in": "(A) Basal-Like 1"
+            },
+            {
+                "symbol": "SLC26A9",
+                "frequency": "1.16",
+                "type": "Upregulated",
+                "p_value": "1.76e-02",
+                "log2fc": 1.16,
+                "higher_expression_in": "(A) Basal-Like 1"
+            },
+            {
+                "symbol": "PACRG-AS1",
+                "frequency": "1.16",
+                "type": "Upregulated",
+                "p_value": "7.38e-02",
+                "log2fc": 1.16,
+                "higher_expression_in": "(A) Basal-Like 1"
+            },
+            {
+                "symbol": "CCDC166",
+                "frequency": "1.14",
+                "type": "Upregulated",
+                "p_value": "5.21e-03",
+                "log2fc": 1.14,
+                "higher_expression_in": "(A) Basal-Like 1"
+            },
+            {
+                "symbol": "ACSL6",
+                "frequency": "1.12",
+                "type": "Upregulated",
+                "p_value": "2.63e-02",
+                "log2fc": 1.12,
+                "higher_expression_in": "(A) Basal-Like 1"
+            },
+            {
+                "symbol": "CA8",
+                "frequency": "1.1",
+                "type": "Upregulated",
+                "p_value": "4.95e-02",
+                "log2fc": 1.1,
+                "higher_expression_in": "(A) Basal-Like 1"
+            },
+            {
+                "symbol": "SYCP1",
+                "frequency": "1.08",
+                "type": "Upregulated",
+                "p_value": "2.86e-01",
+                "log2fc": 1.08,
+                "higher_expression_in": "(A) Basal-Like 1"
+            },
+            {
+                "symbol": "CSN3",
+                "frequency": "-1.48",
+                "type": "Downregulated",
+                "p_value": "1.22e-01",
+                "log2fc": -1.48,
+                "higher_expression_in": "(B) Mesenchymal"
+            },
+            {
+                "symbol": "ATP2B2",
+                "frequency": "-1.51",
+                "type": "Downregulated",
+                "p_value": "4.88e-03",
+                "log2fc": -1.51,
+                "higher_expression_in": "(B) Mesenchymal"
+            },
+            {
+                "symbol": "SERPINB12",
+                "frequency": "-1.57",
+                "type": "Downregulated",
+                "p_value": "3.20e-02",
+                "log2fc": -1.57,
+                "higher_expression_in": "(B) Mesenchymal"
+            },
+            {
+                "symbol": "ELFN1-AS1",
+                "frequency": "-1.65",
+                "type": "Downregulated",
+                "p_value": "2.80e-02",
+                "log2fc": -1.65,
+                "higher_expression_in": "(B) Mesenchymal"
+            },
+            {
+                "symbol": "ZFR2",
+                "frequency": "-1.83",
+                "type": "Downregulated",
+                "p_value": "6.48e-02",
+                "log2fc": -1.83,
+                "higher_expression_in": "(B) Mesenchymal"
+            }
+        ]
+    }
+]
