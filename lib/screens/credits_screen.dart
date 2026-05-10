@@ -28,8 +28,25 @@ class CreditsScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // App Logo or Icon
-            const Center(
-              child: Icon(Icons.favorite, color: Color(0xFFE91E63), size: 64),
+            Center(
+              child: Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.pink.withOpacity(0.2),
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Image.asset('assets/icon.png', fit: BoxFit.cover),
+                ),
+              ),
             ),
             const SizedBox(height: 16),
             const Center(

@@ -20,23 +20,30 @@ class DatabaseService {
   }
 
   Future<Database> _initDatabase() async {
-    Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    String path = join(documentsDirectory.path, "breast_cancer_clean.db");
-
-    // Always copy the latest DB from assets to ensure updates are reflected
+    // Use getApplicationSupportDirectory for desktop (AppData/Roaming on Windows)
+    // Falls back to getApplicationDocumentsDirectory on mobile
+    Directory appDir;
     try {
-      await Directory(dirname(path)).create(recursive: true);
-    } catch (_) {}
+      appDir = await getApplicationSupportDirectory();
+    } catch (_) {
+      appDir = await getApplicationDocumentsDirectory();
+    }
+    
+    String path = join(appDir.path, "breast_cancer_clean.db");
 
-    // Delete old DB if exists and re-copy
-    if (await databaseExists(path)) {
-      await deleteDatabase(path);
+    // Ensure directory exists
+    if (!await appDir.exists()) {
+      await appDir.create(recursive: true);
     }
 
-    ByteData data = await rootBundle.load("assets/db/breast_cancer_clean.db");
-    List<int> bytes = 
-        data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
-    await File(path).writeAsBytes(bytes, flush: true);
+    // Copy DB from assets ONLY if it doesn't exist to avoid "file in use" errors
+    final dbFile = File(path);
+    if (!await dbFile.exists()) {
+      ByteData data = await rootBundle.load("assets/db/breast_cancer_clean.db");
+      List<int> bytes = 
+          data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+      await dbFile.writeAsBytes(bytes, flush: true);
+    }
 
     // Open the database
     return await openDatabase(path);
