@@ -29,7 +29,7 @@ class DatabaseService {
       appDir = await getApplicationDocumentsDirectory();
     }
     
-    String path = join(appDir.path, "breast_cancer_clean.db");
+    String path = join(appDir.path, "master_drugs.db");
 
     // Ensure directory exists
     if (!await appDir.exists()) {
@@ -39,7 +39,7 @@ class DatabaseService {
     // Copy DB from assets ONLY if it doesn't exist to avoid "file in use" errors
     final dbFile = File(path);
     if (!await dbFile.exists()) {
-      ByteData data = await rootBundle.load("assets/db/breast_cancer_clean.db");
+      ByteData data = await rootBundle.load('assets/db/master_drugs.db');
       List<int> bytes = 
           data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
       await dbFile.writeAsBytes(bytes, flush: true);
@@ -49,14 +49,17 @@ class DatabaseService {
     return await openDatabase(path);
   }
 
-  Future<List<DrugInteraction>> getDrugsForGenes(List<String> genes) async {
+  Future<List<DrugInteraction>> getDrugsForGenes(List<String> genes, {bool onlyNovel = false, double minScore = 0.0}) async {
+    final db = await database;
     if (genes.isEmpty) return [];
 
-    final db = await database;
-    
-    // Create placeholders for the IN clause (?, ?, ?)
     final placeholders = List.filled(genes.length, '?').join(',');
     
+    // Build dynamic conditions
+    String conditions = "gene IN ($placeholders)";
+    if (onlyNovel) conditions += " AND is_novel = 1";
+    if (minScore > 0) conditions += " AND score >= $minScore";
+
     // استعلام ذكي بيمنع التكرار (GROUP BY) وبيجمع الأصناف مع بعض
     final query = '''
       SELECT 
@@ -69,7 +72,7 @@ class DatabaseService {
         MAX(docking_score) as docking_score,
         source
       FROM drug_interactions 
-      WHERE gene IN ($placeholders) AND is_novel = 1
+      WHERE $conditions
       GROUP BY drug, gene
       ORDER BY score DESC
     ''';

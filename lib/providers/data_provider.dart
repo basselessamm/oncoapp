@@ -4,9 +4,11 @@ import 'package:flutter/services.dart';
 import '../models/drug_interaction.dart';
 import '../services/database_service.dart';
 import '../models/cancer_signature.dart';
+import '../services/lab_storage_service.dart';
 
 class DataProvider with ChangeNotifier {
   List<CancerSignature> datasets = [];
+  List<CancerSignature> labStudies = [];
   CancerSignature? selectedDataset;
   bool isLoading = true;
   List<String> manualGenes = [];
@@ -35,16 +37,44 @@ class DataProvider with ChangeNotifier {
           final List<dynamic> jsonData = json.decode(jsonString);
           datasets.addAll(jsonData.map((i) => CancerSignature.fromJson(i)).toList());
         } catch (e) {
-          print("Error loading JSON $path: $e");
+          debugPrint("Error loading JSON $path: $e");
         }
       }
 
       if (datasets.isNotEmpty) selectedDataset = datasets.first;
+      
+      await loadLabStudies();
     } catch (e) {
-      print("Error loading datasets: $e");
+      debugPrint("Error loading datasets: $e");
     }
 
     isLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> loadLabStudies() async {
+    try {
+      labStudies = await LabStorageService.loadAllStudies();
+      notifyListeners();
+    } catch (e) {
+      debugPrint("Error loading lab studies: $e");
+    }
+  }
+
+  Future<void> addLabStudy(CancerSignature study) async {
+    await LabStorageService.saveStudy(study);
+    labStudies.add(study);
+    selectedDataset = study;
+    isManualMode = false;
+    notifyListeners();
+  }
+
+  Future<void> deleteLabStudy(CancerSignature study) async {
+    await LabStorageService.deleteStudy(study.cancerName);
+    labStudies.removeWhere((s) => s.cancerName == study.cancerName);
+    if (selectedDataset?.cancerName == study.cancerName) {
+      selectedDataset = datasets.isNotEmpty ? datasets.first : (labStudies.isNotEmpty ? labStudies.first : null);
+    }
     notifyListeners();
   }
 
@@ -65,7 +95,7 @@ class DataProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> fetchRecommendationsFromDB() async {
+  Future<void> fetchRecommendationsFromDB({bool onlyNovel = false, double minScore = 0.0}) async {
     isLoading = true;
     notifyListeners();
 
@@ -74,10 +104,14 @@ class DataProvider with ChangeNotifier {
     if (isManualMode && manualGenes.isNotEmpty) {
       genesToSearch = manualGenes;
     } else if (selectedDataset != null) {
-      genesToSearch = selectedDataset!.significantGenes.map((g) => g.symbol).toList();
+      genesToSearch = selectedDataset!.significantGenes.map((g) => g.symbol.toUpperCase()).toList();
     }
 
-    aiRecommendations = await DatabaseService().getDrugsForGenes(genesToSearch);
+    aiRecommendations = await DatabaseService().getDrugsForGenes(
+      genesToSearch, 
+      onlyNovel: onlyNovel, 
+      minScore: minScore
+    );
 
     isLoading = false;
     notifyListeners();

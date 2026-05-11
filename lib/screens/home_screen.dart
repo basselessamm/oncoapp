@@ -6,6 +6,7 @@ import 'drug_search_screen.dart';
 import 'ai_recommendation_screen.dart';
 import 'genomic_data_screen.dart';
 import 'credits_screen.dart';
+import 'lab_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -143,12 +144,20 @@ class _HomeScreenState extends State<HomeScreen> {
                         value: provider.selectedDataset,
                         icon: const Icon(Icons.arrow_drop_down, color: Color(0xFFE91E63)),
                         onChanged: provider.isManualMode ? null : (v) => v != null ? provider.selectDataset(v) : null,
-                        items: provider.datasets.map((d) {
-                          return DropdownMenuItem<CancerSignature>(
-                            value: d, 
-                            child: Text(d.cancerName, style: const TextStyle(fontWeight: FontWeight.w500))
-                          );
-                        }).toList(),
+                        items: [
+                          ...provider.datasets.map((d) {
+                            return DropdownMenuItem<CancerSignature>(
+                              value: d, 
+                              child: Text(d.cancerName, style: const TextStyle(fontWeight: FontWeight.w500))
+                            );
+                          }),
+                          ...provider.labStudies.map((d) {
+                            return DropdownMenuItem<CancerSignature>(
+                              value: d, 
+                              child: Text('🧪 ${d.cancerName}', style: const TextStyle(fontWeight: FontWeight.w500, color: Color(0xFFC2185B)))
+                            );
+                          }),
+                        ],
                       ),
                     ),
                   ),
@@ -192,28 +201,31 @@ class _HomeScreenState extends State<HomeScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 18),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    onPressed: () async {
-                    showDialog(
-                      context: context, 
-                      barrierDismissible: false, 
-                      builder: (context) => const Center(child: CircularProgressIndicator())
-                    );
-                    try {
-                      await provider.fetchRecommendationsFromDB();
-                      if (mounted) {
-                        Navigator.pop(context);
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const AIRecommendationScreen()));
-                      }
-                    } catch (e) {
-                      if (mounted) {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-                        );
-                      }
-                    }
-                  },
+                    onPressed: () => _showDrugFilterDialog(context, provider),
+                  ),
+              ),
+              const SizedBox(height: 32),
+                
+                // ==========================================
+                // RESEARCH LAB BUTTON (The New Core Feature)
+                // ==========================================
+                const Divider(),
+                const SizedBox(height: 24),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.biotech, color: Color(0xFFC2185B)),
+                  label: const Text('🧪 Open Research Lab', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFC2185B))),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    side: const BorderSide(color: Color(0xFFC2185B), width: 1.5),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LabScreen())),
                 ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Analyze your own TSV/CSV study files with custom filters.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
                 ),
                 const SizedBox(height: 24),
               ],
@@ -233,6 +245,112 @@ class _HomeScreenState extends State<HomeScreen> {
           builder: (context) => DrugSearchScreen(searchQuery: _searchController.text),
         ),
       );
+    }
+  }
+
+  void _showDrugFilterDialog(BuildContext context, DataProvider provider) {
+    bool onlyNovel = false;
+    double minScore = 0.0;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFFFFF8FB),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              title: const Row(
+                children: [
+                  Icon(Icons.tune_rounded, color: Color(0xFFC2185B)),
+                  SizedBox(width: 12),
+                  Text('Precision Filters', style: TextStyle(color: Color(0xFFC2185B), fontWeight: FontWeight.bold)),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SwitchListTile(
+                    title: const Text('Target Novel Candidates Only', style: TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: const Text('Hide standard FDA-approved drugs for this indication', style: TextStyle(fontSize: 11)),
+                    secondary: Icon(onlyNovel ? Icons.star : Icons.star_border, color: Colors.amber),
+                    value: onlyNovel,
+                    activeColor: const Color(0xFFE91E63),
+                    onChanged: (v) => setState(() => onlyNovel = v),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Divider(),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Minimum Evidence Score', style: TextStyle(fontWeight: FontWeight.w600)),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(color: const Color(0xFFC2185B).withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                        child: Text(minScore.toStringAsFixed(1), style: const TextStyle(color: Color(0xFFC2185B), fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Slider(
+                    value: minScore,
+                    min: 0.0,
+                    max: 10.0,
+                    divisions: 20,
+                    activeColor: const Color(0xFFC2185B),
+                    inactiveColor: Colors.pink.withOpacity(0.1),
+                    onChanged: (v) => setState(() => minScore = v),
+                  ),
+                  const Text('Low scores (0-1) show more hits. High scores (5+) show high-confidence results.', style: TextStyle(fontSize: 10, color: Colors.grey, fontStyle: FontStyle.italic)),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _runAnalysis(context, provider, onlyNovel, minScore);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFC2185B),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Start AI Analysis', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _runAnalysis(BuildContext context, DataProvider provider, bool onlyNovel, double minScore) async {
+    showDialog(
+      context: context, 
+      barrierDismissible: false, 
+      builder: (context) => const Center(child: CircularProgressIndicator())
+    );
+    try {
+      await provider.fetchRecommendationsFromDB(onlyNovel: onlyNovel, minScore: minScore);
+      if (mounted) {
+        Navigator.pop(context);
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const AIRecommendationScreen()));
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 }
