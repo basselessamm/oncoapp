@@ -95,9 +95,11 @@ class DataProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> fetchRecommendationsFromDB({bool onlyNovel = false, double minScore = 0.0}) async {
-    isLoading = true;
-    notifyListeners();
+  Future<void> fetchRecommendationsFromDB({bool onlyNovel = false, double minScore = 0.0, bool silent = false}) async {
+    if (!silent) {
+      isLoading = true;
+      notifyListeners();
+    }
 
     List<String> genesToSearch = [];
 
@@ -112,9 +114,10 @@ class DataProvider with ChangeNotifier {
       onlyNovel: onlyNovel, 
       minScore: minScore
     );
-
-    isLoading = false;
-    notifyListeners();
+    if (!silent) {
+      isLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> searchNovelDrugs(String query) async {

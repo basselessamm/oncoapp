@@ -46,7 +46,14 @@ class DatabaseService {
     }
 
     // Open the database
-    return await openDatabase(path);
+    final db = await openDatabase(path);
+    
+    // Ensure indexes exist for performance
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_gene ON drug_interactions(gene)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_is_novel ON drug_interactions(is_novel)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_drug ON drug_interactions(drug)');
+    
+    return db;
   }
 
   Future<List<DrugInteraction>> getDrugsForGenes(List<String> genes, {bool onlyNovel = false, double minScore = 0.0}) async {

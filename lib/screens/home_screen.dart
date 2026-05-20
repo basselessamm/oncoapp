@@ -333,22 +333,28 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _runAnalysis(BuildContext context, DataProvider provider, bool onlyNovel, double minScore) async {
+    // Show progress dialog using the stable scaffold context
+    final scaffoldContext = this.context;
+    
     showDialog(
-      context: context, 
+      context: scaffoldContext, 
       barrierDismissible: false, 
-      builder: (context) => const Center(child: CircularProgressIndicator())
+      builder: (ctx) => const Center(child: CircularProgressIndicator())
     );
+
     try {
-      await provider.fetchRecommendationsFromDB(onlyNovel: onlyNovel, minScore: minScore);
+      // Use silent: true to prevent global isLoading from unmounting the current screen
+      await provider.fetchRecommendationsFromDB(onlyNovel: onlyNovel, minScore: minScore, silent: true);
+      
       if (mounted) {
-        Navigator.pop(context);
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const AIRecommendationScreen()));
+        Navigator.pop(scaffoldContext); // Close progress dialog
+        Navigator.push(scaffoldContext, MaterialPageRoute(builder: (_) => const AIRecommendationScreen()));
       }
     } catch (e) {
       if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        Navigator.pop(scaffoldContext); // Close progress dialog
+        ScaffoldMessenger.of(scaffoldContext).showSnackBar(
+          SnackBar(content: Text('Analysis Error: $e'), backgroundColor: Colors.red),
         );
       }
     }
