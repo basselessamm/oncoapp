@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/data_provider.dart';
+import '../widgets/animated_entrance.dart';
 import '../widgets/evidence_widgets.dart';
 import 'drug_profile_screen.dart';
 
@@ -17,8 +18,13 @@ class DrugSearchScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+
     return Scaffold(
-      appBar: AppBar(title: Text('Results: $searchQuery')),
+      appBar: AppBar(
+        title: Text(isAr ? 'نتائج البحث: $searchQuery' : 'Results: $searchQuery'),
+      ),
       body: Consumer<DataProvider>(
         builder: (context, provider, _) {
           switch (provider.searchStatus) {
@@ -28,7 +34,7 @@ class DrugSearchScreen extends StatelessWidget {
             case LoadStatus.failed:
               return StatusMessage(
                 icon: Icons.error_outline,
-                title: 'Search failed',
+                title: isAr ? 'فشل البحث' : 'Search failed',
                 detail: provider.searchError,
                 onRetry: () => provider.searchDrugs(searchQuery),
               );
@@ -38,31 +44,32 @@ class DrugSearchScreen extends StatelessWidget {
 
           final results = provider.searchResults;
           if (results.isEmpty) {
-            return const StatusMessage(
+            return StatusMessage(
               icon: Icons.search_off,
-              title: 'No drug matched that name',
-              detail: 'Names come from DGIdb source databases and are usually '
-                  'the generic form, e.g. "Doxorubicin" rather than a brand '
-                  'name.',
+              title: isAr ? 'لم يطابق أي دواء هذا الاسم' : 'No drug matched that name',
+              detail: isAr
+                  ? 'الأسماء مأخوذة من قواعد بيانات DGIdb وغالباً ما تكون بالاسم العلمي الجنيس (مثلاً: "Doxorubicin" وليس الاسم التجاري).'
+                  : 'Names come from DGIdb source databases and are usually the generic form, e.g. "Doxorubicin" rather than a brand name.',
             );
           }
 
           return Column(
             children: [
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
                 child: Column(
                   children: [
                     const ResearchUseBanner(dense: true),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     Align(
                       alignment: AlignmentDirectional.centerStart,
                       child: Text(
-                        '${results.length} drug'
-                        '${results.length == 1 ? '' : 's'} matched',
+                        isAr
+                            ? 'تم العثور على ${results.length} دواء مطابق'
+                            : '${results.length} drug${results.length == 1 ? '' : 's'} matched',
                         style: const TextStyle(
                           fontWeight: FontWeight.w600,
-                          fontSize: 14,
+                          fontSize: 13.5,
                         ),
                       ),
                     ),
@@ -71,64 +78,75 @@ class DrugSearchScreen extends StatelessWidget {
               ),
               Expanded(
                 child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 20),
                   itemCount: results.length,
                   itemBuilder: (context, index) {
                     final interaction = results[index];
-                    return Card(
-                      elevation: 1,
-                      margin: const EdgeInsets.only(bottom: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(16),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                DrugProfileScreen(interaction: interaction),
-                          ),
+                    return InteractiveHoverCard(
+                      child: Card(
+                        elevation: 0,
+                        margin: const EdgeInsets.only(bottom: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          side: BorderSide(color: theme.colorScheme.outline),
                         ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                interaction.isUnnamedCompound
-                                    ? interaction.drug
-                                        .replaceFirst('CHEMBL:', '')
-                                    : interaction.drug,
-                                style: const TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.primaryDark,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: [
-                                  ApprovalChip(interaction: interaction),
-                                  if (interaction.targetCount != null)
-                                    InfoChip(
-                                      icon: Icons.scatter_plot_outlined,
-                                      label:
-                                          '${interaction.targetCount} target'
-                                          '${interaction.targetCount == 1 ? '' : 's'}',
-                                      background: AppColors.background,
-                                      tooltip: 'Distinct genes this drug is '
-                                          'recorded against. A high count '
-                                          'indicates a non-selective or '
-                                          'heavily studied compound.',
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(14),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  DrugProfileScreen(interaction: interaction),
+                            ),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        interaction.isUnnamedCompound
+                                            ? interaction.drug
+                                                .replaceFirst('CHEMBL:', '')
+                                            : interaction.drug,
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: theme.colorScheme.primary,
+                                        ),
+                                      ),
                                     ),
-                                  MechanismChip(interaction: interaction),
-                                  CorroborationChip(interaction: interaction),
-                                ],
-                              ),
-                            ],
+                                    const SizedBox(width: 8),
+                                    ApprovalChip(interaction: interaction, dense: true),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 6,
+                                  children: [
+                                    if (interaction.targetCount != null)
+                                      InfoChip(
+                                        dense: true,
+                                        icon: Icons.scatter_plot_outlined,
+                                        label: isAr
+                                            ? '${interaction.targetCount} أهداف'
+                                            : '${interaction.targetCount} target${interaction.targetCount == 1 ? '' : 's'}',
+                                        background: theme.colorScheme
+                                            .surfaceContainerHighest,
+                                        tooltip: isAr
+                                            ? 'الجينات المتميزة المسجلة لهذا الدواء.'
+                                            : 'Distinct genes this drug is recorded against.',
+                                      ),
+                                    MechanismChip(interaction: interaction, dense: true),
+                                    CorroborationChip(interaction: interaction, dense: true),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),

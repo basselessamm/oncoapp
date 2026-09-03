@@ -108,6 +108,16 @@ class CancerSignature {
   int get downregulatedCount =>
       significantGenes.where((gene) => !gene.isUpregulated).length;
 
+  List<String> get upregulatedGenes => significantGenes
+      .where((gene) => gene.isUpregulated)
+      .map((g) => g.symbol)
+      .toList();
+
+  List<String> get downregulatedGenes => significantGenes
+      .where((gene) => !gene.isUpregulated)
+      .map((g) => g.symbol)
+      .toList();
+
   factory CancerSignature.fromJson(Map<String, dynamic> json) {
     final genes = (json['significant_genes'] as List<dynamic>? ?? const [])
         .cast<Map<String, dynamic>>()

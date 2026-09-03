@@ -1,12 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 import 'package:onco_repurpose_ai/models/cancer_signature.dart';
 import 'package:onco_repurpose_ai/models/drug_candidate.dart';
 import 'package:onco_repurpose_ai/models/drug_interaction.dart';
+import 'package:onco_repurpose_ai/models/target_evidence.dart';
+import 'package:onco_repurpose_ai/providers/connectivity_provider.dart';
 import 'package:onco_repurpose_ai/providers/data_provider.dart';
+import 'package:onco_repurpose_ai/providers/evidence_provider.dart';
 import 'package:onco_repurpose_ai/screens/interaction_results_screen.dart';
+import 'package:onco_repurpose_ai/services/lincs_service.dart';
+import 'package:onco_repurpose_ai/services/network/api_client.dart';
+import 'package:onco_repurpose_ai/services/network/response_cache.dart';
+import 'package:onco_repurpose_ai/services/open_targets_service.dart';
 import 'package:onco_repurpose_ai/widgets/evidence_widgets.dart';
 import 'package:provider/provider.dart';
+
+class _DummyClient extends http.BaseClient {
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    return http.StreamedResponse(const Stream.empty(), 200);
+  }
+}
 
 void main() {
   DrugInteraction interaction({
@@ -62,10 +77,35 @@ void main() {
     return provider;
   }
 
-  Future<void> pump(WidgetTester tester, DataProvider provider) async {
+  Future<void> pump(
+    WidgetTester tester,
+    DataProvider provider, {
+    EvidenceProvider? evidenceProvider,
+    ConnectivityProvider? connectivityProvider,
+  }) async {
+    final client = ApiClient(
+      hasConsent: () => true,
+      cache: ResponseCache(),
+      httpClient: _DummyClient(),
+    );
+    final service = OpenTargetsService(client: client);
+    final evProvider = evidenceProvider ?? EvidenceProvider(service: service);
+    final lincsService = LincsService(client: client);
+    final connProvider =
+        connectivityProvider ?? ConnectivityProvider(lincsService: lincsService);
+
     await tester.pumpWidget(
-      ChangeNotifierProvider<DataProvider>.value(
-        value: provider,
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<DataProvider>.value(value: provider),
+          Provider<ResponseCache>.value(value: ResponseCache()),
+          Provider<ApiClient>.value(value: client),
+          Provider<OpenTargetsService>.value(value: service),
+          ChangeNotifierProvider<EvidenceProvider>.value(value: evProvider),
+          Provider<LincsService>.value(value: lincsService),
+          ChangeNotifierProvider<ConnectivityProvider>.value(
+              value: connProvider),
+        ],
         child: const MaterialApp(home: InteractionResultsScreen()),
       ),
     );
@@ -240,14 +280,93 @@ void main() {
   testWidgets('shows a spinner while the lookup runs', (tester) async {
     final provider = DataProvider();
     provider.interactionStatus = LoadStatus.loading;
+    final client = ApiClient(
+      hasConsent: () => true,
+      cache: ResponseCache(),
+      httpClient: _DummyClient(),
+    );
+    final service = OpenTargetsService(client: client);
+    final evProvider = EvidenceProvider(service: service);
+    final lincsService = LincsService(client: client);
+    final connProvider = ConnectivityProvider(lincsService: lincsService);
+
     await tester.pumpWidget(
-      ChangeNotifierProvider<DataProvider>.value(
-        value: provider,
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<DataProvider>.value(value: provider),
+          Provider<ResponseCache>.value(value: ResponseCache()),
+          Provider<ApiClient>.value(value: client),
+          Provider<OpenTargetsService>.value(value: service),
+          ChangeNotifierProvider<EvidenceProvider>.value(value: evProvider),
+          Provider<LincsService>.value(value: lincsService),
+          ChangeNotifierProvider<ConnectivityProvider>.value(
+              value: connProvider),
+        ],
         child: const MaterialApp(home: InteractionResultsScreen()),
       ),
     );
     await tester.pump();
 
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
+  });
+
+  testWidgets('displays active disease context and change button in summary', (tester) async {
+    await pump(
+      tester,
+      resultsProvider([interaction(gene: 'UP_GENE', drug: 'DRUG_A')]),
+    );
+
+    expect(find.textContaining('Disease: Breast carcinoma'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, 'Change'), findsOneWidget);
+  });
+
+  testWidgets('displays AssociationChip when evidence is available for candidate', (tester) async {
+    final client = ApiClient(
+      hasConsent: () => true,
+      cache: ResponseCache(),
+      httpClient: _DummyClient(),
+    );
+    final service = OpenTargetsService(client: client);
+    final evProvider = EvidenceProvider(service: service);
+    evProvider.evidenceByGene = {
+      'UP_GENE': const TargetEvidence(
+        geneSymbol: 'UP_GENE',
+        associationScore: 0.86,
+      ),
+    };
+
+    await pump(
+      tester,
+      resultsProvider([interaction(gene: 'UP_GENE', drug: 'DRUG_A')]),
+      evidenceProvider: evProvider,
+    );
+
+    expect(find.byType(AssociationChip), findsWidgets);
+    expect(find.text('Strong (0.86)'), findsOneWidget);
+  });
+
+  testWidgets('displays PassengerWarning when candidate targets are likely passengers', (tester) async {
+    final client = ApiClient(
+      hasConsent: () => true,
+      cache: ResponseCache(),
+      httpClient: _DummyClient(),
+    );
+    final service = OpenTargetsService(client: client);
+    final evProvider = EvidenceProvider(service: service);
+    evProvider.evidenceByGene = {
+      'UP_GENE': const TargetEvidence(
+        geneSymbol: 'UP_GENE',
+        associationScore: 0.05,
+        clinicalCandidateCount: 0,
+      ),
+    };
+
+    await pump(
+      tester,
+      resultsProvider([interaction(gene: 'UP_GENE', drug: 'DRUG_A')]),
+      evidenceProvider: evProvider,
+    );
+
+    expect(find.byType(PassengerWarning), findsOneWidget);
   });
 }

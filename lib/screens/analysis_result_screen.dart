@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../models/cancer_signature.dart';
 import '../providers/data_provider.dart';
+import '../theme/app_theme.dart';
 import '../widgets/evidence_widgets.dart';
 
 /// Review screen for a freshly analysed study file, before saving it.
@@ -22,6 +23,11 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
   Widget build(BuildContext context) {
     final signature = widget.signature;
     final genes = signature.significantGenes;
+    final theme = Theme.of(context);
+    final evidenceColors = theme.extension<EvidenceThemeColors>() ??
+        (theme.brightness == Brightness.dark
+            ? EvidenceThemeColors.dark
+            : EvidenceThemeColors.light);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Analysis Result')),
@@ -49,14 +55,14 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
                         margin: EdgeInsets.zero,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(color: Colors.grey.shade200),
+                          side: BorderSide(color: theme.colorScheme.outline),
                         ),
                         child: ListTile(
                           leading: Icon(
                             isUp ? Icons.arrow_upward : Icons.arrow_downward,
                             color: isUp
-                                ? EvidenceColors.corroborated
-                                : const Color(0xFFC62828),
+                                ? evidenceColors.opposesInk
+                                : evidenceColors.reinforcesInk,
                           ),
                           title: Text(gene.symbol,
                               style: const TextStyle(
@@ -68,8 +74,11 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
                           ),
                           trailing: Text(
                             gene.type,
-                            style: const TextStyle(
-                                fontSize: 11, color: Colors.black54),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: theme.colorScheme.onSurface
+                                  .withValues(alpha: 0.65),
+                            ),
                           ),
                         ),
                       );
@@ -83,10 +92,14 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
   }
 
   Widget _buildSummary(CancerSignature signature) {
+    final theme = Theme.of(context);
     final provenance = signature.provenance;
     return Container(
       width: double.infinity,
-      color: Colors.white,
+      decoration: BoxDecoration(
+        color: theme.cardTheme.color ?? theme.colorScheme.surface,
+        border: Border(bottom: BorderSide(color: theme.colorScheme.outline)),
+      ),
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -109,8 +122,11 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
               '${provenance.usedFdrCorrection ? 'Benjamini-Hochberg FDR correction applied' : 'No multiple-testing correction applied'}; '
               'threshold p <= ${provenance.pValueThreshold}, '
               '|log2FC| >= ${provenance.minLog2FC}.',
-              style: const TextStyle(
-                  fontSize: 12, height: 1.4, color: Colors.black54),
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.4,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+              ),
             ),
             if (provenance.rowsSkipped > 0) ...[
               const SizedBox(height: 8),
@@ -136,28 +152,35 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
   }
 
   Widget _stat(String label, String value) {
+    final theme = Theme.of(context);
     return Column(
       children: [
-        Text(value,
-            style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: AppColors.primaryDark)),
-        Text(label,
-            style: const TextStyle(fontSize: 11, color: Colors.black54)),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.primary,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+          ),
+        ),
       ],
     );
   }
 
   Widget _buildFooter() {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black12, blurRadius: 10, offset: Offset(0, -4)),
-        ],
+      decoration: BoxDecoration(
+        color: theme.cardTheme.color ?? theme.colorScheme.surface,
+        border: Border(top: BorderSide(color: theme.colorScheme.outline)),
       ),
       child: SafeArea(
         top: false,
@@ -178,7 +201,8 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
                     ? null
                     : _save,
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primaryDark,
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: theme.colorScheme.onPrimary,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
                 child: _saving

@@ -1,12 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 import 'package:onco_repurpose_ai/main.dart';
 import 'package:onco_repurpose_ai/models/cancer_signature.dart';
 import 'package:onco_repurpose_ai/providers/data_provider.dart';
+import 'package:onco_repurpose_ai/providers/evidence_provider.dart';
+import 'package:onco_repurpose_ai/services/network/api_client.dart';
 import 'package:onco_repurpose_ai/services/network/network_consent.dart';
 import 'package:onco_repurpose_ai/services/network/response_cache.dart';
+import 'package:onco_repurpose_ai/services/open_targets_service.dart';
 import 'package:onco_repurpose_ai/widgets/evidence_widgets.dart';
 import 'package:provider/provider.dart';
+
+class _DummyClient extends http.BaseClient {
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    return http.StreamedResponse(const Stream.empty(), 200);
+  }
+}
 
 /// Home screen behaviour, driven by in-memory fixtures.
 ///
@@ -46,6 +57,13 @@ void main() {
   }
 
   Future<void> pumpHome(WidgetTester tester, DataProvider provider) async {
+    final client = ApiClient(
+      hasConsent: () => false,
+      cache: ResponseCache(),
+      httpClient: _DummyClient(),
+    );
+    final service = OpenTargetsService(client: client);
+
     await tester.pumpWidget(
       MultiProvider(
         providers: [
@@ -54,6 +72,11 @@ void main() {
           ChangeNotifierProvider<NetworkConsent>(
               create: (_) => NetworkConsent()),
           Provider<ResponseCache>(create: (_) => ResponseCache()),
+          Provider<ApiClient>.value(value: client),
+          Provider<OpenTargetsService>.value(value: service),
+          ChangeNotifierProvider<EvidenceProvider>(
+            create: (_) => EvidenceProvider(service: service),
+          ),
         ],
         child: const OncoApp(),
       ),

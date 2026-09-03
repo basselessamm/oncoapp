@@ -2,15 +2,23 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import 'l10n/app_localizations.dart';
+import 'providers/connectivity_provider.dart';
 import 'providers/data_provider.dart';
+import 'providers/evidence_provider.dart';
+import 'providers/locale_provider.dart';
 import 'screens/home_screen.dart';
+import 'services/lincs_service.dart';
 import 'services/network/api_client.dart';
 import 'services/network/network_consent.dart';
 import 'services/network/response_cache.dart';
-import 'widgets/evidence_widgets.dart';
+import 'services/open_targets_service.dart';
+import 'theme/app_theme.dart';
+import 'theme/theme_provider.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,6 +35,8 @@ void main() {
   // denied, and the client refuses to send anything until it reports otherwise.
   final consent = NetworkConsent()..load();
   final cache = ResponseCache();
+  final themeProvider = ThemeProvider()..load();
+  final localeProvider = LocaleProvider()..load();
   final apiClient = ApiClient(
     hasConsent: () => consent.allowExternalRequests,
     cache: cache,
@@ -35,9 +45,25 @@ void main() {
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider.value(value: themeProvider),
+        ChangeNotifierProvider.value(value: localeProvider),
         ChangeNotifierProvider.value(value: consent),
         Provider<ResponseCache>.value(value: cache),
         Provider<ApiClient>.value(value: apiClient),
+        Provider<OpenTargetsService>(
+          create: (ctx) => OpenTargetsService(client: ctx.read<ApiClient>()),
+        ),
+        ChangeNotifierProvider<EvidenceProvider>(
+          create: (ctx) =>
+              EvidenceProvider(service: ctx.read<OpenTargetsService>()),
+        ),
+        Provider<LincsService>(
+          create: (ctx) => LincsService(client: ctx.read<ApiClient>()),
+        ),
+        ChangeNotifierProvider<ConnectivityProvider>(
+          create: (ctx) =>
+              ConnectivityProvider(lincsService: ctx.read<LincsService>()),
+        ),
         ChangeNotifierProvider(create: (_) => DataProvider()..loadData()),
       ],
       child: const OncoApp(),
@@ -50,81 +76,29 @@ class OncoApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider?>();
+    final localeProvider = context.watch<LocaleProvider?>();
+    final mode = themeProvider?.themeMode ?? ThemeMode.system;
+
     return MaterialApp(
       title: 'OncoRepurpose',
       debugShowCheckedModeBanner: false,
-      theme: _buildTheme(),
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: mode,
+      locale: localeProvider?.locale,
+      supportedLocales: const [
+        Locale('en'),
+        Locale('ar'),
+      ],
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       home: const HomeScreen(),
     );
   }
-
-  /// Single source of truth for component styling.
-  ///
-  /// Styles were previously written inline at every call site, so 64 raw hex
-  /// literals coexisted with a `ColorScheme` that no screen ever read.
-  static ThemeData _buildTheme() {
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: AppColors.primaryDark,
-      primary: AppColors.primary,
-      secondary: AppColors.primaryLight,
-    );
-
-    return ThemeData(
-      useMaterial3: true,
-      colorScheme: colorScheme,
-      scaffoldBackgroundColor: AppColors.background,
-      appBarTheme: const AppBarTheme(
-        elevation: 0,
-        scrolledUnderElevation: 0.5,
-        backgroundColor: Colors.transparent,
-        foregroundColor: AppColors.primaryDark,
-        centerTitle: true,
-        titleTextStyle: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          color: AppColors.primaryDark,
-        ),
-        iconTheme: IconThemeData(color: AppColors.primaryDark),
-      ),
-      cardTheme: CardThemeData(
-        color: Colors.white,
-        elevation: 1,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-      ),
-      chipTheme: const ChipThemeData(
-        side: BorderSide.none,
-        padding: EdgeInsets.symmetric(horizontal: 4),
-      ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.primaryDark,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      ),
-      filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      ),
-      sliderTheme: const SliderThemeData(
-        activeTrackColor: AppColors.primaryDark,
-        thumbColor: AppColors.primaryDark,
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-      ),
-      dividerTheme: const DividerThemeData(space: 1),
-    );
-  }
 }
+

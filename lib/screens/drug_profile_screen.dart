@@ -4,8 +4,13 @@ import 'package:provider/provider.dart';
 import '../models/cancer_signature.dart';
 import '../models/drug_interaction.dart';
 import '../models/pharmacology.dart';
+import '../providers/connectivity_provider.dart';
 import '../providers/data_provider.dart';
+import '../providers/evidence_provider.dart';
+import '../services/network/api_result.dart';
+import '../services/network/response_cache.dart';
 import '../widgets/evidence_widgets.dart';
+import 'settings_screen.dart';
 
 /// Detail view for one gene-drug interaction.
 ///
@@ -27,8 +32,15 @@ class DrugProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    final theme = Theme.of(context);
+    final onSurface = theme.colorScheme.onSurface;
+    final onSurfaceMuted = onSurface.withValues(alpha: 0.65);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Interaction Detail')),
+      appBar: AppBar(
+        title: Text(isAr ? 'تفاصيل التفاعل الدوائي' : 'Interaction Detail'),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -38,32 +50,44 @@ class DrugProfileScreen extends StatelessWidget {
             const SizedBox(height: 20),
             const ResearchUseBanner(),
             const SizedBox(height: 24),
-            const SectionHeading('What the databases report',
-                icon: Icons.fact_check_outlined),
+            SectionHeading(
+              isAr ? 'بيانات التفاعل المسجلة' : 'What the databases report',
+              icon: Icons.fact_check_outlined,
+            ),
             const SizedBox(height: 16),
             DetailCard(
               icon: Icons.settings_outlined,
-              title: 'Mechanism of action',
+              title: isAr ? 'آلية العمل الحيوية' : 'Mechanism of action',
               footnote: interaction.hasUnknownMechanism
-                  ? 'No source recorded an interaction type. This is the case '
-                      'for 64% of records in the bundled database.'
-                  : 'As reported by the source databases listed below.',
+                  ? (isAr
+                      ? 'لم يسجل أي مصدر نوع التفاعل. ينطبق هذا على 64% من السجلات في قاعدة البيانات.'
+                      : 'No source recorded an interaction type. This is the case for 64% of records in the bundled database.')
+                  : (isAr
+                      ? 'كما ورد في قواعد البيانات المرجعية المذكورة أدناه.'
+                      : 'As reported by the source databases listed below.'),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    interaction.mechanismLabel ?? 'Not reported',
-                    style: const TextStyle(fontSize: 14, color: Colors.black87),
+                    interaction.mechanismLabel ?? (isAr ? 'غير مسجلة' : 'Not reported'),
+                    style: TextStyle(fontSize: 14, color: onSurface),
                   ),
                   if (interaction.direction !=
                       PharmacologicDirection.unspecified) ...[
                     const SizedBox(height: 6),
                     Text(
-                      interaction.direction.label,
-                      style: const TextStyle(
+                      isAr
+                          ? (switch (interaction.direction) {
+                              PharmacologicDirection.suppresses => 'تثبيط الهدف',
+                              PharmacologicDirection.activates => 'تنشيط الهدف',
+                              PharmacologicDirection.conflicting => 'تقارير متضاربة',
+                              PharmacologicDirection.unspecified => 'الآلية غير مسجلة',
+                            })
+                          : interaction.direction.label,
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: Colors.black54,
+                        color: onSurfaceMuted,
                       ),
                     ),
                   ],
@@ -72,27 +96,27 @@ class DrugProfileScreen extends StatelessWidget {
             ),
             DetailCard(
               icon: Icons.hub_outlined,
-              title: 'Corroboration',
-              footnote: '${interaction.corroboration.explanation}. Only 9.2% of '
-                  'gene-drug pairs in this database are reported by more than '
-                  'one source.',
+              title: isAr ? 'توثيق وتكرار المصادر' : 'Corroboration',
+              footnote: '${interaction.corroboration.explanation}. '
+                  '${isAr ? "9.2% فقط من أزواج الجينات والأدوية موثقة في أكثر من مصدر." : "Only 9.2% of gene-drug pairs in this database are reported by more than one source."}',
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    interaction.corroboration.label,
-                    style: const TextStyle(
+                    isAr
+                        ? (interaction.sourceCount == 0 ? 'غير موثق' : '${interaction.sourceCount} مصادر موثقة')
+                        : interaction.corroboration.label,
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: Colors.black87,
+                      color: onSurface,
                     ),
                   ),
                   if (interaction.sources.isNotEmpty) ...[
                     const SizedBox(height: 6),
                     Text(
                       interaction.sources.join(', '),
-                      style: const TextStyle(
-                          fontSize: 13, color: Colors.black54),
+                      style: TextStyle(fontSize: 13, color: onSurfaceMuted),
                     ),
                   ],
                 ],
@@ -100,52 +124,65 @@ class DrugProfileScreen extends StatelessWidget {
             ),
             DetailCard(
               icon: Icons.description_outlined,
-              title: 'DGIdb interaction score',
-              footnote: 'Measures how well documented the interaction is, '
-                  'weighted against how many partners the gene and drug have. '
-                  'It is not a measure of efficacy, potency, or clinical '
-                  'confidence. ${interaction.evidenceStrength.explanation}.',
+              title: isAr ? 'درجة توثيق DGIdb' : 'DGIdb interaction score',
+              footnote: isAr
+                  ? 'تقيس مدى توثيق التفاعل ووزنه بالنسبة لعدد الشركاء، وليست مقياساً للفعالية أو الفعالية السريرية.'
+                  : 'Measures how well documented the interaction is, weighted against how many partners the gene and drug have. It is not a measure of efficacy, potency, or clinical confidence. ${interaction.evidenceStrength.explanation}.',
               child: Text(
                 '${interaction.score.toStringAsFixed(3)}  -  '
                 '${interaction.evidenceStrength.label}',
-                style: const TextStyle(fontSize: 14, color: Colors.black87),
+                style: TextStyle(fontSize: 14, color: onSurface),
               ),
             ),
             DetailCard(
               icon: Icons.gavel_outlined,
-              title: 'Regulatory status',
+              title: isAr ? 'الحالة التنظيمية والاعتماد' : 'Regulatory status',
               footnote: interaction.isApproved
-                  ? 'At least one source database marks this drug as approved. '
-                      'Approval is for its own indication, not for the cancer '
-                      'type under study.'
-                  : 'No source database marks this drug as approved. This '
-                      'includes investigational and discontinued compounds and '
-                      'is not an assessment of repurposing novelty.',
+                  ? (isAr
+                      ? 'قاعدة بيانات واحدة على الأقل تدرج الدواء كمعتمد لدواعيه الخاصة (وليس بالضرورة لنوع السرطان قيد الدراسة).'
+                      : 'At least one source database marks this drug as approved. Approval is for its own indication, not for the cancer type under study.')
+                  : (isAr
+                      ? 'لم يُسجل كمعتمد في المصادر. يشمل المركبات قيد البحث وتلك المتوقفة.'
+                      : 'No source database marks this drug as approved. This includes investigational and discontinued compounds and is not an assessment of repurposing novelty.'),
               child: Text(
-                interaction.approvalLabel,
-                style: const TextStyle(fontSize: 14, color: Colors.black87),
+                isAr
+                    ? (interaction.isApproved ? 'معتمد رسمياً' : 'مركب بحثي / غير معتمد')
+                    : interaction.approvalLabel,
+                style: TextStyle(fontSize: 14, color: onSurface),
               ),
             ),
             if (interaction.targetCount != null)
               DetailCard(
                 icon: Icons.scatter_plot_outlined,
-                title: 'Target breadth',
+                title: isAr ? 'نطاق الأهداف الجينية' : 'Target breadth',
                 footnote: interaction.targetCount! >= 20
-                    ? 'A drug with many recorded targets is either well studied '
-                        'or non-selective. Treat a single-gene match as weak '
-                        'evidence of a specific effect.'
-                    : 'Number of distinct genes this drug is recorded against '
-                        'across the whole database.',
+                    ? (isAr
+                        ? 'الدواء ذو الأهداف المتعددة قد يكون مدروساً بعمق أو غير انتقائي.'
+                        : 'A drug with many recorded targets is either well studied or non-selective. Treat a single-gene match as weak evidence of a specific effect.')
+                    : (isAr
+                        ? 'عدد الجينات المتميزة المسجلة لهذا الدواء عبر قاعدة البيانات كاملة.'
+                        : 'Number of distinct genes this drug is recorded against across the whole database.'),
                 child: Text(
-                  '${interaction.targetCount} gene'
-                  '${interaction.targetCount == 1 ? '' : 's'}',
-                  style: const TextStyle(fontSize: 14, color: Colors.black87),
+                  isAr
+                      ? '${interaction.targetCount} جينات مسجلة'
+                      : '${interaction.targetCount} gene${interaction.targetCount == 1 ? '' : 's'}',
+                  style: TextStyle(fontSize: 14, color: onSurface),
                 ),
               ),
             const SizedBox(height: 8),
-            const SectionHeading('Your gene set', icon: Icons.biotech_outlined),
+            SectionHeading(
+              isAr ? 'السياق مع مجموعتك الجينية' : 'Your gene set',
+              icon: Icons.biotech_outlined,
+            ),
             const SizedBox(height: 16),
             _GenomicContext(interaction: interaction),
+            const SizedBox(height: 16),
+            SectionHeading(
+              isAr ? 'الأدلة الخارجية (Open Targets & LINCS)' : 'External evidence',
+              icon: Icons.public,
+            ),
+            const SizedBox(height: 16),
+            _ExternalEvidenceSection(interaction: interaction),
             const SizedBox(height: 12),
           ],
         ),
@@ -161,27 +198,42 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final gradColors = isDark
+        ? [
+            const Color(0xFF1E293B),
+            const Color(0xFF0F172A),
+          ]
+        : [
+            theme.colorScheme.primary,
+            theme.colorScheme.primary.withValues(alpha: 0.85),
+          ];
+
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.primary, AppColors.primaryDark],
+        gradient: LinearGradient(
+          colors: gradColors,
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
+        border: isDark ? Border.all(color: theme.colorScheme.outline) : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'REPORTED INTERACTION',
+          Text(
+            isAr ? 'تفاعل جيني دوائي مسجل' : 'REPORTED INTERACTION',
             style: TextStyle(
-              color: Colors.white70,
+              color: isDark ? theme.colorScheme.primary : Colors.white70,
               letterSpacing: 1.2,
               fontSize: 11,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 8),
@@ -199,12 +251,18 @@ class _Header extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.white70),
+              color: isDark ? theme.colorScheme.surface : Colors.transparent,
+              border: Border.all(
+                  color: isDark ? theme.colorScheme.outline : Colors.white70),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              'Target: ${interaction.gene}',
-              style: const TextStyle(color: Colors.white, fontSize: 13),
+              isAr ? 'الهدف الجيني: ${interaction.gene}' : 'Target: ${interaction.gene}',
+              style: TextStyle(
+                color: isDark ? theme.colorScheme.onSurface : Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -221,21 +279,26 @@ class _GenomicContext extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    final onSurface = theme.colorScheme.onSurface;
+    final onSurfaceMuted = onSurface.withValues(alpha: 0.65);
+
     return Consumer<DataProvider>(
       builder: (context, provider, _) {
-        // The signature that produced the result, not whatever is selected now.
         final dataset = provider.queriedSignature ??
             (provider.isManualMode ? null : provider.selectedDataset);
 
         if (dataset == null) {
-          return const DetailCard(
+          return DetailCard(
             icon: Icons.edit_outlined,
-            title: 'Expression context',
-            footnote: 'Genes were entered manually, so there is no fold change '
-                'to compare the drug\'s direction against.',
+            title: isAr ? 'سياق التعبير الجيني' : 'Expression context',
+            footnote: isAr
+                ? 'أُدخلت الجينات يدوياً، لذلك لا يتوفر معامل التغير اللوغاريتمي لمقارنة اتجاه الدواء.'
+                : 'Genes were entered manually, so there is no fold change to compare the drug\'s direction against.',
             child: Text(
-              'Not available',
-              style: TextStyle(fontSize: 14, color: Colors.black87),
+              isAr ? 'غير متوفر' : 'Not available',
+              style: TextStyle(fontSize: 14, color: onSurface),
             ),
           );
         }
@@ -251,12 +314,13 @@ class _GenomicContext extends StatelessWidget {
         if (match == null) {
           return DetailCard(
             icon: Icons.help_outline,
-            title: 'Expression context',
-            footnote: 'This target is not among the genes in '
-                '"${dataset.cancerName}".',
-            child: const Text(
-              'Not in the selected signature',
-              style: TextStyle(fontSize: 14, color: Colors.black87),
+            title: isAr ? 'سياق التعبير الجيني' : 'Expression context',
+            footnote: isAr
+                ? 'هذا الهدف ليس من ضمن الجينات في "${dataset.cancerName}".'
+                : 'This target is not among the genes in "${dataset.cancerName}".',
+            child: Text(
+              isAr ? 'ليس في البصمة المحددة' : 'Not in the selected signature',
+              style: TextStyle(fontSize: 14, color: onSurface),
             ),
           );
         }
@@ -270,13 +334,10 @@ class _GenomicContext extends StatelessWidget {
           children: [
             DetailCard(
               icon: Icons.swap_vert,
-              title: 'Directional check',
-              footnote: '${verdict.explanation}\n\n'
-                  'This compares the drug\'s reported direction of action '
-                  'against the direction this gene moved. It is a consistency '
-                  'check, not a prediction: mRNA level is not protein '
-                  'activity, and a dysregulated gene may be a passenger rather '
-                  'than a driver of the tumour.',
+              title: isAr ? 'فحص التوافق الاتجاهي' : 'Directional check',
+              footnote: isAr
+                  ? '${verdict.explanation}\n\nيقارن هذا الفحص اتجاه عمل الدواء باتجاه تغير الجين في الورم. إنه فحص توافق جزيئي وليس تنبؤاً سريرياً حتمياً.'
+                  : "${verdict.explanation}\n\nThis compares the drug's reported direction of action against the direction this gene moved. It is a consistency check, not a prediction.",
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -286,31 +347,37 @@ class _GenomicContext extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    '${interaction.direction.label}  vs  '
-                    '${regulation.label.toLowerCase()} in this study',
-                    style:
-                        const TextStyle(fontSize: 13, color: Colors.black54),
+                    isAr
+                        ? '${switch (interaction.direction) {
+                            PharmacologicDirection.suppresses => "مثبط للهدف",
+                            PharmacologicDirection.activates => "منشط للهدف",
+                            PharmacologicDirection.conflicting => "تأثير متضارب",
+                            PharmacologicDirection.unspecified => "آلية غير مسجلة",
+                          }}  مقابل  ${regulation == GeneRegulation.up ? "تعبير جيني مرتفع" : "تعبير جيني منخفض"} في هذه البصمة'
+                        : '${interaction.direction.label}  vs  ${regulation.label.toLowerCase()} in this study',
+                    style: TextStyle(fontSize: 13, color: onSurfaceMuted),
                   ),
                 ],
               ),
             ),
             DetailCard(
               icon: Icons.show_chart,
-              title: 'Expression in ${dataset.cancerName}',
+              title: isAr ? 'مستويات التعبير في ${dataset.cancerName}' : 'Expression in ${dataset.cancerName}',
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _row('Direction', match.type),
-                  _row('Log2 fold change', match.log2fc.toStringAsFixed(3)),
+                  _row(isAr ? 'الاتجاه' : 'Direction', match.type, onSurface),
+                  _row(isAr ? 'تغير الطي (Log2FC)' : 'Log2 fold change', match.log2fc.toStringAsFixed(3), onSurface),
                   if (pValue != null)
                     _row(
                       match.adjustedPValue != null
-                          ? 'Adjusted p-value'
-                          : 'Raw p-value',
+                          ? (isAr ? 'القيمة الاحتمالية المصححة (FDR)' : 'Adjusted p-value')
+                          : (isAr ? 'القيمة الاحتمالية (p-value)' : 'Raw p-value'),
                       pValue.toStringAsExponential(2),
+                      onSurface,
                     ),
                   if (match.higherExpressionIn.isNotEmpty)
-                    _row('Higher in', match.higherExpressionIn),
+                    _row(isAr ? 'أعلى في' : 'Higher in', match.higherExpressionIn, onSurface),
                 ],
               ),
             ),
@@ -320,13 +387,240 @@ class _GenomicContext extends StatelessWidget {
     );
   }
 
-  Widget _row(String label, String value) {
+  Widget _row(String label, String value, Color color) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Text(
         '$label: $value',
-        style: const TextStyle(fontSize: 14, color: Colors.black87),
+        style: TextStyle(fontSize: 13.5, color: color),
       ),
+    );
+  }
+}
+
+class _ExternalEvidenceSection extends StatelessWidget {
+  const _ExternalEvidenceSection({required this.interaction});
+
+  final DrugInteraction interaction;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    final onSurface = theme.colorScheme.onSurface;
+    final onSurfaceMuted = onSurface.withValues(alpha: 0.65);
+
+    return Consumer<EvidenceProvider>(
+      builder: (context, provider, _) {
+        if (provider.isConsentBlocked) {
+          return EvidenceUnavailableNote(
+            reason: NetworkFailureReason.consentNotGranted,
+            onEnable: () {
+              final cache = context.read<ResponseCache>();
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => SettingsScreen(cache: cache)),
+              );
+            },
+          );
+        }
+
+        final evidence = provider.evidenceFor(interaction.gene);
+        final disease = provider.selectedDisease?.name ?? (isAr ? 'المرض المحدد' : 'selected disease');
+
+        final connectivityProvider = context.watch<ConnectivityProvider>();
+        final lincsEvidence = connectivityProvider.getEvidenceForDrug(interaction.drug);
+
+        if (evidence == null && lincsEvidence == null) {
+          return DetailCard(
+            icon: Icons.info_outline,
+            title: isAr ? 'أدلة Open Targets' : 'Open Targets evidence',
+            footnote: isAr
+                ? 'لا توجد سجلات خارجية محملة للجين ${interaction.gene} ضد $disease.'
+                : 'No external evidence record loaded for ${interaction.gene} against $disease.',
+            child: Text(
+              isAr ? 'لا يوجد سجل خارجي' : 'No external record',
+              style: TextStyle(fontSize: 14, color: onSurface),
+            ),
+          );
+        }
+
+        final dtScores = evidence?.datatypeScores ?? const {};
+        final candidate = evidence?.mostAdvancedCandidate;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (evidence != null) ...[
+              DetailCard(
+                icon: Icons.hub_outlined,
+                title: isAr ? 'ارتباط الهدف بالمرض ($disease)' : 'Target-disease association ($disease)',
+                footnote:
+                    '${isAr ? "درجة الارتباط المعيارية في Open Targets:" : "Open Targets calibrated association score with enableIndirect: true."} '
+                    '${evidence.associationStrength.explanation}',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        AssociationChip(evidence: evidence),
+                        if (provider.freshness != null) ...[
+                          const SizedBox(width: 8),
+                          FreshnessChip(
+                            freshness: provider.freshness!,
+                            retrievedAt: provider.retrievedAt,
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (dtScores.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        isAr ? 'تفصيل الأدلة حسب نوع البيانات:' : 'Evidence breakdown by data type:',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      for (final entry in dtScores.entries)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 3),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                entry.key.replaceAll('_', ' '),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: onSurfaceMuted,
+                                ),
+                              ),
+                              Text(
+                                entry.value.toStringAsFixed(3),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: onSurface,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ],
+                ),
+              ),
+            DetailCard(
+              icon: Icons.biotech_outlined,
+              title: isAr ? 'قابلية استهداف الهدف (Tractability)' : 'Target tractability',
+              footnote: evidence.bestTractability.explanation,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TractabilityChip(evidence: evidence),
+                  if (evidence.tractability.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        for (final bucket in evidence.tractability)
+                          if (bucket.value)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF1F8E9),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: const Color(0xFFC8E6C9),
+                                ),
+                              ),
+                              child: Text(
+                                '${bucket.modality}: ${bucket.label}',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFF2E7D32),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            DetailCard(
+              icon: Icons.local_hospital_outlined,
+              title: isAr ? 'المرشحات في التجارب السريرية' : 'Clinical pipeline candidate',
+              footnote: candidate != null
+                  ? (isAr
+                      ? 'المرشح الأكثر تقدماً في التجارب السريرية المسجل لهذا الهدف في Open Targets.'
+                      : 'Most advanced clinical trial candidate recorded for this target in Open Targets.')
+                  : (isAr
+                      ? 'لا توجد أدوية سريرية نشطة مسجلة لهذا الهدف في Open Targets.'
+                      : 'No active clinical pipeline drug recorded in Open Targets.'),
+              child: candidate != null
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              candidate.drugName ??
+                                  candidate.drugId ??
+                                  (isAr ? 'مرشح غير معروف' : 'Unknown candidate'),
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: onSurface,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            ClinicalStageChip(candidate: candidate),
+                          ],
+                        ),
+                        if (candidate.drugType != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            '${isAr ? "النوع الجزيئي: " : "Modality: "}${candidate.drugType}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: onSurfaceMuted,
+                            ),
+                          ),
+                        ],
+                        if (candidate.indications.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            '${isAr ? "دواعي الاستعمال: " : "Indications: "}${candidate.indications.take(3).join(", ")}'
+                            '${candidate.indications.length > 3 ? "..." : ""}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: onSurfaceMuted,
+                            ),
+                          ),
+                        ],
+                      ],
+                    )
+                  : Text(
+                      isAr ? 'لا توجد مرشحات سريرية مسجلة' : 'No clinical candidates recorded',
+                      style: TextStyle(fontSize: 14, color: onSurface),
+                    ),
+            ),
+            ],
+            if (lincsEvidence != null) ...[
+              const SizedBox(height: 12),
+              LincsDetailsCard(evidence: lincsEvidence),
+            ],
+          ],
+        );
+      },
     );
   }
 }

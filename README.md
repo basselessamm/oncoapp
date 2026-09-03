@@ -116,26 +116,38 @@ and the UI explains why rather than reporting "no results found".
 
 ```
 lib/
-├── main.dart                          App setup, theme, provider wiring
+├── main.dart                          App setup, theme engine, provider wiring
+├── theme/
+│   ├── app_theme.dart                 Light & OLED Midnight Slate palettes, EvidenceThemeColors extension
+│   └── theme_provider.dart            Theme mode state manager with disk persistence
 ├── models/
 │   ├── cancer_signature.dart          Signature, gene, analysis provenance
 │   ├── drug_interaction.dart          One (gene, drug) record + evidence class
 │   ├── drug_candidate.dart            Per-drug grouping, directional ranking
-│   └── pharmacology.dart              Direction inference and matching
+│   ├── pharmacology.dart              Direction inference and matching
+│   ├── target_evidence.dart           Open Targets association, tractability, candidates
+│   ├── connectivity_evidence.dart     LINCS L1000FWD reversal scores & perturbations
+│   └── disease_option.dart            MONDO ontology options & defaults
 ├── providers/
-│   └── data_provider.dart             App state; LoadStatus per operation
+│   ├── data_provider.dart             Signature selection, filters, SQLite query state
+│   ├── evidence_provider.dart         Open Targets state, cache passthrough, disease context
+│   └── connectivity_provider.dart     LINCS L1000 connectivity score caching & loading
 ├── services/
-│   ├── database_service.dart          SQLite queries against the bundled DB
+│   ├── database_service.dart          SQLite access over bundled DGIdb database
 │   ├── lab_storage_service.dart       Saved studies as JSON on disk
 │   ├── study_analysis_service.dart    CSV/TSV parsing, FDR, filtering
+│   ├── open_targets_service.dart      Open Targets GraphQL client (reverse queries, batching)
+│   ├── lincs_service.dart             NIH LINCS L1000FWD signature connectivity client
 │   └── network/
 │       ├── api_client.dart            HTTP with caching, retries, offline path
 │       ├── api_result.dart            Success/failure + data freshness
 │       ├── network_consent.dart       Opt-in gate, denied by default
 │       └── response_cache.dart        On-disk response cache
-├── screens/                           8 screens
+├── screens/                           9 screens (workstation dashboard, results grid, profile, settings)
 └── widgets/
-    └── evidence_widgets.dart          Shared components, colour tokens
+    ├── adaptive_layout.dart           Breakpoints, AdaptiveContainer, AdaptiveCardGrid
+    ├── animated_entrance.dart         AnimatedEntrance, InteractiveHoverCard
+    └── evidence_widgets.dart          Shared components, colour tokens, OT chips, LINCS card
 ```
 
 Every asynchronous operation reports `LoadStatus.loading` / `ready` / `failed`
@@ -149,10 +161,91 @@ Parsing runs on a background isolate. Rows missing a gene symbol, fold change,
 or p-value are skipped and counted in the provenance record rather than being
 coerced to `log2fc = 0, p = 1`.
 
-### Network layer
+### External Target Evidence: Open Targets Platform (Phase 2b)
 
-Nothing in the app contacts an external service today. This layer exists so that
-when it does, offline behaviour is defined rather than discovered.
+The app integrates with the Open Targets Platform GraphQL API (Release 26.06,
+API v26.6.3, CC0 license) to corroborate whether candidate drug targets are
+biologically relevant to the tumor phenotype.
+
+#### Architectural Query Fix: Reverse vs. Broken Forward Query
+
+Open Targets API v26.6.3 contains a critical defect in its forward query:
+`target(ensemblId).associatedDiseases(Bs: [diseaseId])` ignores the disease
+filter and returns fabricated association scores (e.g., assigning housekeeping
+control gene `ACTB` a score of 0.9323, higher than proven breast cancer driver
+`ESR1` at 0.8179).
+
+OncoApp uses the verified reverse query:
+```graphql
+disease(efoId: $diseaseId) {
+  associatedTargets(Bs: $ensemblIds, enableIndirect: true) {
+    rows { score datatypeScores { id score } target { id approvedSymbol } }
+  }
+}
+```
+Setting `enableIndirect: true` is mandatory; without it, evidence from child
+ontologies is omitted (e.g. `TP53` drops from 0.8606 to 0.6626). A guard test
+asserts that queries never invoke the broken forward query.
+
+#### Calibrated Association Score Scale
+
+Open Targets scores are empirical harmonic sums, not linear probabilities.
+The app calibrates them into discrete, evidence-backed tiers:
+- **Strong** ($\ge 0.30$): Extensive genetic, somatic, or clinical precedence.
+- **Moderate** ($\ge 0.10$): Clear corroborated publication evidence.
+- **Weak** ($0.01 - 0.09$): Limited or solitary literature citations.
+- **Negligible** ($< 0.01$): Negligible indirect linkage.
+- **Not reported** (`null`): No published link found in Open Targets.
+
+#### Driver vs. Passenger Target Hypothesis
+
+Reversing the expression of a gene that changed as a passive consequence of
+tumorigenesis (passenger) provides no therapeutic benefit. When a target has
+negligible or absent disease association (< 0.10), zero clinical trial candidates,
+and lacks clinical tractability, the app surfaces a probabilistic passenger
+warning:
+> "No published evidence links this gene to the selected disease. The observed
+> expression change may be a consequence of tumourigenesis rather than a cause."
+
+#### Scientific Limitations of Target Evidence
+
+1. **Publication Bias**: Well-funded and heavily researched genes receive higher
+   scores simply because more papers exist.
+2. **Indirect Term Inheritance**: Scores with `enableIndirect: true` aggregate
+   findings across descendant disease ontology branches.
+3. **No Directionality**: Open Targets measures the strength of association, not
+   whether up- or downregulation is protective. It complements the directional check
+   rather than replacing it.
+4. **Disease Context Sensitivity**: Association scores depend strictly on the
+   selected MONDO disease ontology context.
+
+### Transcriptomic Connectivity Scoring (NIH LINCS L1000)
+
+In Phase 2c, OncoRepurpose connects with the **NIH LINCS L1000FWD API**
+(`https://maayanlab.cloud/l1000fwd/`, Ma'ayan Laboratory) to evaluate real
+whole-genome transcriptomic signature reversal.
+
+Rather than relying on single-gene annotations alone, the app queries over 16,000
+drug perturbation profiles measured across human cancer cell lines (e.g. MCF7,
+HCC515, PC3):
+
+1. **`POST /sig_search`**: Submits active signature up- and down-regulated gene sets.
+2. **`GET /result/topn/<result_id>`**: Retrieves top opposing (signature reversal)
+   and similar (mimic) perturbagens with standardized scores, p-values, FDR
+   q-values, and z-scores.
+3. **`GET /sig/<sig_id>`**: Resolves pert_id / Broad IDs to generic drug descriptions,
+   incubation times, and micro-molar doses.
+
+#### Scientific Tiers of Transcriptomic Reversal
+
+| Tier | Criteria | Biological Interpretation |
+| --- | --- | --- |
+| **Strong Reversal** | FDR $q \le 0.05$ and score $\le -0.30$ | Highly statistically significant reversal across the global cancer transcriptome. |
+| **Moderate Reversal** | FDR $q \le 0.10$ and score $< 0.0$ | Significant anti-correlated expression profile. |
+| **Nominal Reversal** | $p \le 0.05$ or score $< 0.0$ | Suggestive reversal trend in vitro. |
+| **Mimic** | Score $> 0.0$ | **Caution**: Perturbation mimics the disease expression signature (potential adverse or pro-tumorigenic effect). |
+
+### Network layer
 
 **Consent is opt-in and denied by default.** A gene list from an unpublished
 study reveals what a researcher is working on, so `NetworkConsent` gates every
@@ -178,43 +271,15 @@ Failures are classified by cause (`offline`, `timeout`, `tlsFailure`,
 transient failure gets a retry affordance, a consent gate gets a settings link,
 and a malformed response gets neither.
 
-Other properties, each covered by tests:
-
-- **Timeouts** apply per attempt, so a stalled request cannot hang the UI.
-- **Retries** are bounded and only for transient failures, with exponential
-  backoff. A 400 is never retried, and stale cache is never served for one,
-  because that would mask a broken query.
-- **Request spacing** serialises outbound calls, so a 30-gene signature does not
-  fire 30 simultaneous requests at a public API.
-- **Response size** is capped at 4 MB; decoding an unbounded GraphQL page on the
-  UI isolate would freeze the app.
-- **Cache integrity**: entries are written via a temp file and rename, verify
-  their own key on read to survive hash collisions, and are deleted when corrupt
-  rather than re-read on every launch. Retention is 30 days, capped at 500
-  entries, evicted oldest-first.
-
-Settings shows how many responses are cached, their total size, and a control to
-delete them.
-
-### Query design
-
-Gene lookups group by `(gene, drug)` and aggregate across sources: `MAX(score)`,
-`GROUP_CONCAT` of distinct interaction types and sources, and a per-drug
-subquery for approval. Gene lists are chunked at 500 bound parameters to stay
-under `SQLITE_MAX_VARIABLE_NUMBER`. `LIKE` wildcards in search terms are
-escaped. All values are bound, never interpolated.
-
-The bundled database is copied to the app support directory on first launch,
-guarded by `PRAGMA user_version` so a rebuilt asset reaches existing installs.
-Bump `DatabaseService.assetDatabaseVersion` when regenerating it.
-
 ## Development
 
 ```bash
 flutter pub get
-flutter test          # 227 tests
-flutter analyze       # clean
-flutter run -d windows
+flutter test                            # 318 tests passing
+flutter analyze                         # 0 issues
+dart run tool/verify_open_targets.dart  # live Open Targets API verification
+dart run tool/verify_lincs.dart         # live LINCS L1000 API verification
+flutter build windows --release
 ```
 
 Platforms: Windows, Android, macOS, Linux, iOS. **Web cannot work** - the app

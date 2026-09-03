@@ -88,7 +88,8 @@ class _FilterConfigScreenState extends State<FilterConfigScreen> {
               FilledButton.icon(
                 onPressed: _running ? null : _analyze,
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primaryDark,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
                   padding: const EdgeInsets.symmetric(vertical: 18),
                 ),
                 icon: _running
@@ -111,6 +112,7 @@ class _FilterConfigScreenState extends State<FilterConfigScreen> {
   }
 
   Widget _buildFileCard() {
+    final theme = Theme.of(context);
     final fileName = widget.file.uri.pathSegments.isEmpty
         ? widget.file.path
         : widget.file.uri.pathSegments.last;
@@ -118,14 +120,14 @@ class _FilterConfigScreenState extends State<FilterConfigScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardTheme.color ?? theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: theme.colorScheme.outline),
       ),
       child: Row(
         children: [
-          const Icon(Icons.description_outlined,
-              color: AppColors.primary),
+          Icon(Icons.description_outlined,
+              color: theme.colorScheme.primary),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -136,8 +138,10 @@ class _FilterConfigScreenState extends State<FilterConfigScreen> {
                         fontWeight: FontWeight.w600, fontSize: 14)),
                 const SizedBox(height: 2),
                 Text(fileName,
-                    style: const TextStyle(
-                        fontSize: 12, color: Colors.black54)),
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: theme.colorScheme.onSurface
+                            .withValues(alpha: 0.65))),
               ],
             ),
           ),
@@ -196,6 +200,7 @@ class _FilterConfigScreenState extends State<FilterConfigScreen> {
   }
 
   Widget _buildFoldChangeSlider() {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -205,9 +210,9 @@ class _FilterConfigScreenState extends State<FilterConfigScreen> {
             const Text('Minimum |log2FC|',
                 style: TextStyle(fontWeight: FontWeight.w600)),
             Text(_log2fc.toStringAsFixed(1),
-                style: const TextStyle(
+                style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: AppColors.primaryDark)),
+                    color: theme.colorScheme.primary)),
           ],
         ),
         Slider(
@@ -222,7 +227,9 @@ class _FilterConfigScreenState extends State<FilterConfigScreen> {
               ? 'No effect-size filter.'
               : 'Keeps genes changing at least '
                   '${_foldChangeLabel(_log2fc)}-fold in either direction.',
-          style: const TextStyle(fontSize: 11, color: Colors.black54),
+          style: TextStyle(
+              fontSize: 11,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.65)),
         ),
       ],
     );

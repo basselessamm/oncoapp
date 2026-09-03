@@ -170,6 +170,155 @@ class ApiClient {
     );
   }
 
+  /// Issues a GET request expecting a JSON object response.
+  ///
+  /// Respects [cacheKey], [ResponseCache], [NetworkConsent], timeouts, and retries.
+  Future<ApiResult<Map<String, dynamic>>> getJson({
+    required Uri url,
+    String? cacheKey,
+    Map<String, String> headers = const {},
+  }) async {
+    final key = cacheKey ?? url.toString();
+
+    final cached = await _cache.read(key);
+    if (cached != null && cached.isFresh) {
+      final decoded = _decode(cached.body);
+      if (decoded != null) {
+        return ApiSuccess(
+          data: decoded,
+          freshness: DataFreshness.freshCache,
+          retrievedAt: cached.retrievedAt,
+        );
+      }
+    }
+
+    if (!_hasConsent()) {
+      if (cached != null) {
+        final decoded = _decode(cached.body);
+        if (decoded != null) {
+          return ApiSuccess(
+            data: decoded,
+            freshness: DataFreshness.staleCache,
+            retrievedAt: cached.retrievedAt,
+          );
+        }
+      }
+      return const ApiFailure(
+        reason: NetworkFailureReason.consentNotGranted,
+        message: 'External lookups are turned off. Enable them in Settings to '
+            'fetch external evidence.',
+      );
+    }
+
+    ApiFailure<Map<String, dynamic>>? lastFailure;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      final outcome = await _attemptGet(
+        url: url,
+        headers: headers,
+      );
+
+      switch (outcome) {
+        case _AttemptSuccess(:final body):
+          await _cache.write(key, body);
+          final decoded = _decode(body);
+          if (decoded == null) {
+            return const ApiFailure(
+              reason: NetworkFailureReason.invalidResponse,
+              message: 'The service returned a response this app could not read.',
+            );
+          }
+          return ApiSuccess(
+            data: decoded,
+            freshness: DataFreshness.network,
+            retrievedAt: DateTime.now(),
+          );
+
+        case _AttemptFailure(:final failure):
+          lastFailure = failure;
+          final isLastAttempt = attempt == maxAttempts;
+          if (!failure.isRetryable || isLastAttempt) {
+            return _withStaleFallback(cached, failure);
+          }
+          await Future<void>.delayed(retryBackoff * (1 << (attempt - 1)));
+      }
+    }
+
+    return _withStaleFallback(
+      cached,
+      lastFailure ??
+          const ApiFailure(
+            reason: NetworkFailureReason.unknown,
+            message: 'The request failed.',
+          ),
+    );
+  }
+
+  Future<_AttemptOutcome> _attemptGet({
+    required Uri url,
+    required Map<String, String> headers,
+  }) async {
+    try {
+      await _waitForSpacing();
+
+      final response = await _http
+          .get(
+            url,
+            headers: {
+              'Accept': 'application/json',
+              ...headers,
+            },
+          )
+          .timeout(timeout);
+
+      if (response.bodyBytes.length > maxResponseBytes) {
+        return _AttemptFailure(ApiFailure(
+          reason: NetworkFailureReason.responseTooLarge,
+          message: 'The service returned more data than this app will load '
+              '(${(response.bodyBytes.length / 1024 / 1024).toStringAsFixed(1)} '
+              'MB). Try a smaller request.',
+          statusCode: response.statusCode,
+        ));
+      }
+
+      final status = response.statusCode;
+      if (status >= 200 && status < 300) {
+        return _AttemptSuccess(response.body);
+      }
+
+      return _AttemptFailure(_failureForStatus(status));
+    } on TimeoutException catch (error) {
+      return _AttemptFailure(ApiFailure(
+        reason: NetworkFailureReason.timeout,
+        message: 'The service did not respond within ${timeout.inSeconds} seconds.',
+        cause: error,
+      ));
+    } on SocketException catch (error) {
+      return _AttemptFailure(ApiFailure(
+        reason: NetworkFailureReason.offline,
+        message: 'No network connection. Cached results are still available.',
+        cause: error,
+      ));
+    } on HandshakeException catch (error) {
+      return _AttemptFailure(ApiFailure(
+        reason: NetworkFailureReason.tlsFailure,
+        message: 'The secure connection could not be established.',
+        cause: error,
+      ));
+    } on http.ClientException catch (error) {
+      return _AttemptFailure(ApiFailure(
+        reason: NetworkFailureReason.offline,
+        message: 'The connection was interrupted. Cached results are still available.',
+        cause: error,
+      ));
+    } catch (error) {
+      return _AttemptFailure(ApiFailure(
+        reason: NetworkFailureReason.unknown,
+        message: 'An unexpected network error occurred.',
+        cause: error,
+      ));
+    }
+  }
+
   /// Serves an expired cache entry when the network could not be reached.
   ///
   /// Only for transient failures: a 400 means the request itself was wrong, so

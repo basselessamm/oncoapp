@@ -34,22 +34,26 @@ class _LabScreenState extends State<LabScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+
     return Scaffold(
-      appBar: AppBar(title: const Text('My Studies')),
+      appBar: AppBar(
+        title: Text(isAr ? 'دراساتي المخبرية' : 'My Studies'),
+      ),
       body: SafeArea(
         child: Consumer<DataProvider>(
           builder: (context, provider, _) {
             return SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(20),
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 640),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _buildUploadSection(),
+                      _buildUploadSection(isAr),
                       if (provider.labStudies.isNotEmpty)
-                        _buildStudiesSection(provider),
+                        _buildStudiesSection(provider, isAr),
                     ],
                   ),
                 ),
@@ -61,17 +65,24 @@ class _LabScreenState extends State<LabScreen> {
     );
   }
 
-  Widget _buildUploadSection() {
+  Widget _buildUploadSection(bool isAr) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SectionHeading('Upload a study',
-            icon: Icons.upload_file_outlined),
+        SectionHeading(
+          isAr ? 'رفع دراسة جديدة' : 'Upload a study',
+          icon: Icons.upload_file_outlined,
+        ),
         const SizedBox(height: 8),
-        const Text(
-          'A CSV or TSV table with a gene symbol column, a log2 fold change '
-          'column, and a p-value column.',
-          style: TextStyle(fontSize: 12, height: 1.4, color: Colors.black54),
+        Text(
+          isAr
+              ? 'ملف جدول CSV أو TSV يحتوي على رمز الجين، ومعامل تغير الطي log2FC، وقيمة p-value.'
+              : 'A CSV or TSV table with a gene symbol column, a log2 fold change column, and a p-value column.',
+          style: TextStyle(
+              fontSize: 12,
+              height: 1.4,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.65)),
         ),
         const SizedBox(height: 16),
         InkWell(
@@ -80,35 +91,38 @@ class _LabScreenState extends State<LabScreen> {
           child: Container(
             height: 120,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: theme.cardTheme.color ?? theme.colorScheme.surface,
               borderRadius: BorderRadius.circular(16),
-              border:
-                  Border.all(color: AppColors.primaryLight, width: 1.5),
+              border: Border.all(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.5),
+                  width: 1.5),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.cloud_upload_outlined,
-                    size: 36, color: AppColors.primary),
+                Icon(Icons.cloud_upload_outlined,
+                    size: 36, color: theme.colorScheme.primary),
                 const SizedBox(height: 8),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
                     _selectedFile == null
-                        ? 'Tap to select a CSV or TSV file'
+                        ? (isAr ? 'اضغط لاختيار ملف CSV أو TSV' : 'Tap to select a CSV or TSV file')
                         : _fileName(_selectedFile!),
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.black54),
+                    style: TextStyle(
+                        color: theme.colorScheme.onSurface
+                            .withValues(alpha: 0.65)),
                   ),
                 ),
               ],
             ),
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 18),
         TextField(
           controller: _nameController,
-          decoration: _inputDecoration('Study name', Icons.title),
+          decoration: _inputDecoration(isAr ? 'اسم الدراسة' : 'Study name', Icons.title),
         ),
         const SizedBox(height: 12),
         Row(
@@ -117,7 +131,7 @@ class _LabScreenState extends State<LabScreen> {
               child: TextField(
                 controller: _pmidController,
                 decoration:
-                    _inputDecoration('PMID (optional)', Icons.link),
+                    _inputDecoration(isAr ? 'معرف ببميد (اختياري)' : 'PMID (optional)', Icons.link),
               ),
             ),
             const SizedBox(width: 12),
@@ -126,49 +140,59 @@ class _LabScreenState extends State<LabScreen> {
                 controller: _sizeController,
                 keyboardType: TextInputType.number,
                 decoration: _inputDecoration(
-                    'Sample size (optional)', Icons.groups_outlined),
+                    isAr ? 'حجم العينة (اختياري)' : 'Sample size (optional)', Icons.groups_outlined),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 18),
         FilledButton.icon(
           onPressed: _selectedFile == null ? null : _proceedToConfig,
           icon: const Icon(Icons.tune),
-          label: const Text('Configure analysis',
-              style: TextStyle(fontWeight: FontWeight.bold)),
+          label: Text(
+            isAr ? 'تكوين وضبط التحليل' : 'Configure analysis',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
           style: FilledButton.styleFrom(
-            backgroundColor: AppColors.primaryDark,
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            backgroundColor: theme.colorScheme.primary,
+            foregroundColor: theme.colorScheme.onPrimary,
+            padding: const EdgeInsets.symmetric(vertical: 14),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildStudiesSection(DataProvider provider) {
+  Widget _buildStudiesSection(DataProvider provider, bool isAr) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Divider(height: 44),
-        const SectionHeading('Saved studies',
-            icon: Icons.folder_open_outlined),
-        const SizedBox(height: 16),
+        const Divider(height: 40),
+        SectionHeading(
+          isAr ? 'الدراسات المحفوظة' : 'Saved studies',
+          icon: Icons.folder_open_outlined,
+        ),
+        const SizedBox(height: 14),
         ...provider.labStudies.map(
           (study) => Card(
             elevation: 0,
-            margin: const EdgeInsets.only(bottom: 12),
+            margin: const EdgeInsets.only(bottom: 10),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: Colors.grey.shade200),
+              side: BorderSide(color: theme.colorScheme.outline),
             ),
             child: ListTile(
               title: Text(study.cancerName,
                   style: const TextStyle(fontWeight: FontWeight.bold)),
               subtitle: Text(
-                '${study.significantGenes.length} genes  -  '
-                '${study.upregulatedCount} up, ${study.downregulatedCount} down'
-                '${study.sampleSize > 0 ? '  -  n=${study.sampleSize}' : ''}',
+                isAr
+                    ? '${study.significantGenes.length} جينات  -  '
+                      '${study.upregulatedCount} مرتفع، ${study.downregulatedCount} منخفض'
+                      '${study.sampleSize > 0 ? '  -  n=${study.sampleSize}' : ''}'
+                    : '${study.significantGenes.length} genes  -  '
+                      '${study.upregulatedCount} up, ${study.downregulatedCount} down'
+                      '${study.sampleSize > 0 ? '  -  n=${study.sampleSize}' : ''}',
                 style: const TextStyle(fontSize: 12),
               ),
               trailing: Row(
@@ -176,7 +200,7 @@ class _LabScreenState extends State<LabScreen> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.visibility_outlined),
-                    tooltip: 'View genes in ${study.cancerName}',
+                    tooltip: isAr ? 'عرض جينات ${study.cancerName}' : 'View genes in ${study.cancerName}',
                     onPressed: () {
                       provider.selectDataset(study);
                       Navigator.push(
@@ -188,7 +212,7 @@ class _LabScreenState extends State<LabScreen> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.delete_outline),
-                    tooltip: 'Delete ${study.cancerName}',
+                    tooltip: isAr ? 'حذف ${study.cancerName}' : 'Delete ${study.cancerName}',
                     onPressed: () => _confirmDelete(provider, study),
                   ),
                 ],
@@ -204,12 +228,6 @@ class _LabScreenState extends State<LabScreen> {
     return InputDecoration(
       labelText: label,
       prefixIcon: Icon(icon, size: 20),
-      filled: true,
-      fillColor: Colors.white,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
-      ),
     );
   }
 
