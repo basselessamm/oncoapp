@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/data_provider.dart';
+
 import '../models/cancer_signature.dart';
-import 'drug_search_screen.dart';
-import 'ai_recommendation_screen.dart';
-import 'genomic_data_screen.dart';
+import '../models/drug_interaction.dart';
+import '../providers/data_provider.dart';
+import '../services/network/response_cache.dart';
+import '../widgets/evidence_widgets.dart';
 import 'credits_screen.dart';
+import 'drug_search_screen.dart';
+import 'genomic_data_screen.dart';
+import 'interaction_results_screen.dart';
 import 'lab_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -30,205 +35,126 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('OncoRepurpose AI', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('OncoRepurpose',
+            style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.info_outline, color: Color(0xFFC2185B)),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreditsScreen())),
-            tooltip: 'About & Credits',
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Settings and privacy',
+            onPressed: () {
+              final cache = context.read<ResponseCache>();
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => SettingsScreen(cache: cache),
+                ),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.info_outline),
+            tooltip: 'About, data sources and credits',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const CreditsScreen()),
+            ),
           ),
         ],
       ),
       body: Consumer<DataProvider>(
         builder: (context, provider, _) {
-          if (provider.isLoading) return const Center(child: CircularProgressIndicator());
-          
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // ==========================================
-                // DRUG SEARCH SECTION (The New Feature)
-                // ==========================================
-                const Text(
-                  '💊 Quick Drug Lookup (Novel Only)',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFC2185B)),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.blue.shade100.withOpacity(0.5),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText: 'Search novel drugs (e.g. Aspirin)...',
-                      prefixIcon: const Icon(Icons.search, color: Color(0xFFE91E63)),
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.arrow_forward, color: Color(0xFFE91E63)),
-                        onPressed: () => _handleSearch(provider),
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
-                      ),
-                      filled: true,
-                      fillColor: Colors.white,
-                    ),
-                    onSubmitted: (_) => _handleSearch(provider),
-                  ),
-                ),
-                const SizedBox(height: 32),
-                const Divider(),
-                const SizedBox(height: 24),
+          if (provider.isLoadingDatasets) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-                // ==========================================
-                // OPTION A: MANUAL GENE INPUT
-                // ==========================================
-                const Text(
-                  '🧬 Option A: Manual Gene Input',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFC2185B)),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _manualGeneController,
-                  decoration: InputDecoration(
-                    hintText: 'e.g. PIK3CA, TP53',
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                    prefixIcon: const Icon(Icons.science),
-                    suffixIcon: provider.isManualMode 
-                        ? IconButton(
-                            icon: const Icon(Icons.clear, color: Colors.grey),
-                            onPressed: () {
-                              _manualGeneController.clear();
-                              provider.setManualGenes('');
-                            },
-                          )
-                        : null,
-                  ),
-                  onChanged: (value) => provider.setManualGenes(value),
-                ),
-                
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24.0),
-                  child: Center(child: Text('OR', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey))),
-                ),
+          if (provider.datasetStatus == LoadStatus.failed) {
+            return StatusMessage(
+              icon: Icons.error_outline,
+              title: 'Could not load reference data',
+              detail: provider.datasetError,
+              onRetry: provider.loadData,
+            );
+          }
 
-                // ==========================================
-                // OPTION B: SELECT DATASET
-                // ==========================================
-                const Text(
-                  '🔬 Option B: Select Dataset',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFC2185B)),
-                ),
-                const SizedBox(height: 16),
-                Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<CancerSignature>(
-                        isExpanded: true,
-                        value: provider.selectedDataset,
-                        icon: const Icon(Icons.arrow_drop_down, color: Color(0xFFE91E63)),
-                        onChanged: provider.isManualMode ? null : (v) => v != null ? provider.selectDataset(v) : null,
-                        items: [
-                          ...provider.datasets.map((d) {
-                            return DropdownMenuItem<CancerSignature>(
-                              value: d, 
-                              child: Text(d.cancerName, style: const TextStyle(fontWeight: FontWeight.w500))
-                            );
-                          }),
-                          ...provider.labStudies.map((d) {
-                            return DropdownMenuItem<CancerSignature>(
-                              value: d, 
-                              child: Text('🧪 ${d.cancerName}', style: const TextStyle(fontWeight: FontWeight.w500, color: Color(0xFFC2185B)))
-                            );
-                          }),
+          return SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // Single narrow column on a 1280px desktop window reads as a
+                // ribbon; cap the content width instead.
+                final maxWidth = constraints.maxWidth > 700.0 ? 640.0 : double.infinity;
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: maxWidth),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const ResearchUseBanner(),
+                          if (provider.datasetError != null) ...[
+                            const SizedBox(height: 12),
+                            _WarningLine(message: provider.datasetError!),
+                          ],
+                          const SizedBox(height: 28),
+                          const SectionHeading('Look up a drug',
+                              icon: Icons.medication_outlined),
+                          const SizedBox(height: 12),
+                          _buildSearchField(provider),
+                          const SizedBox(height: 32),
+                          const Divider(),
+                          const SizedBox(height: 24),
+                          const SectionHeading('Find drugs for a gene set',
+                              icon: Icons.biotech_outlined),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Queries DGIdb for every drug recorded against '
+                            'your genes, then checks whether each drug acts '
+                            'against the direction your genes moved.',
+                            style: TextStyle(
+                                fontSize: 12,
+                                height: 1.4,
+                                color: Colors.black54),
+                          ),
+                          const SizedBox(height: 20),
+                          _buildManualInput(provider),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 20),
+                            child: Center(
+                              child: Text('OR',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey)),
+                            ),
+                          ),
+                          _buildDatasetPicker(provider),
+                          const SizedBox(height: 24),
+                          if (!provider.isManualMode)
+                            OutlinedButton.icon(
+                              icon: const Icon(Icons.list_alt),
+                              label: const Text('View genes in this signature'),
+                              style: OutlinedButton.styleFrom(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
+                              ),
+                              onPressed: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const GenomicDataScreen()),
+                              ),
+                            ),
+                          const SizedBox(height: 12),
+                          _buildLookupButton(provider),
+                          const SizedBox(height: 32),
+                          const Divider(),
+                          const SizedBox(height: 24),
+                          _buildLabEntry(),
+                          const SizedBox(height: 24),
                         ],
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 40),
-                
-                if (!provider.isManualMode)
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.biotech),
-                    label: const Text('View Genomic Signatures'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GenomicDataScreen())),
-                  ),
-                const SizedBox(height: 16),
-                
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFE91E63), Color(0xFFC2185B)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.pink.withOpacity(0.4),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.auto_awesome, color: Colors.white),
-                    label: const Text('🎯 Analyze with AI', style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: () => _showDrugFilterDialog(context, provider),
-                  ),
-              ),
-              const SizedBox(height: 32),
-                
-                // ==========================================
-                // RESEARCH LAB BUTTON (The New Core Feature)
-                // ==========================================
-                const Divider(),
-                const SizedBox(height: 24),
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.biotech, color: Color(0xFFC2185B)),
-                  label: const Text('🧪 Open Research Lab', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFC2185B))),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    side: const BorderSide(color: Color(0xFFC2185B), width: 1.5),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LabScreen())),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Analyze your own TSV/CSV study files with custom filters.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-                const SizedBox(height: 24),
-              ],
+                );
+              },
             ),
           );
         },
@@ -236,127 +162,422 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _handleSearch(DataProvider provider) {
-    if (_searchController.text.isNotEmpty) {
-      provider.searchNovelDrugs(_searchController.text);
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => DrugSearchScreen(searchQuery: _searchController.text),
+  Widget _buildSearchField(DataProvider provider) {
+    return TextField(
+      controller: _searchController,
+      textInputAction: TextInputAction.search,
+      decoration: InputDecoration(
+        hintText: 'Drug name, e.g. Tamoxifen',
+        prefixIcon: const Icon(Icons.search),
+        suffixIcon: IconButton(
+          icon: const Icon(Icons.arrow_forward),
+          tooltip: 'Search',
+          onPressed: () => _handleSearch(provider),
         ),
-      );
-    }
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+      ),
+      onSubmitted: (_) => _handleSearch(provider),
+    );
   }
 
-  void _showDrugFilterDialog(BuildContext context, DataProvider provider) {
-    bool onlyNovel = false;
-    double minScore = 0.0;
+  Widget _buildManualInput(DataProvider provider) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Option A: enter gene symbols',
+            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _manualGeneController,
+          decoration: InputDecoration(
+            hintText: 'PIK3CA, TP53, ERBB2',
+            helperText: provider.isManualMode
+                ? '${provider.manualGenes.length} gene(s) recognised'
+                : 'Separate symbols with commas or spaces',
+            filled: true,
+            fillColor: Colors.white,
+            prefixIcon: const Icon(Icons.science_outlined),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            suffixIcon: provider.isManualMode
+                ? IconButton(
+                    icon: const Icon(Icons.clear),
+                    tooltip: 'Clear gene list',
+                    onPressed: () {
+                      _manualGeneController.clear();
+                      provider.setManualGenes('');
+                    },
+                  )
+                : null,
+          ),
+          onChanged: provider.setManualGenes,
+        ),
+      ],
+    );
+  }
 
-    showDialog(
+  Widget _buildDatasetPicker(DataProvider provider) {
+    final signature = provider.selectedDataset;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Option B: use a signature',
+            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+        const SizedBox(height: 8),
+        Card(
+          elevation: 1,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<CancerSignature>(
+                isExpanded: true,
+                value: signature,
+                onChanged: provider.isManualMode
+                    ? null
+                    : (value) {
+                        if (value != null) provider.selectDataset(value);
+                      },
+                items: [
+                  for (final dataset in provider.datasets)
+                    DropdownMenuItem(
+                      value: dataset,
+                      child: Text(dataset.cancerName,
+                          overflow: TextOverflow.ellipsis),
+                    ),
+                  for (final study in provider.labStudies)
+                    DropdownMenuItem(
+                      value: study,
+                      child: Text('My study: ${study.cancerName}',
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              color: AppColors.primaryDark)),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (signature != null && !provider.isManualMode) ...[
+          const SizedBox(height: 8),
+          Text(
+            '${signature.significantGenes.length} genes  -  '
+            '${signature.upregulatedCount} up, '
+            '${signature.downregulatedCount} down'
+            '${signature.sampleSize > 0 ? '  -  n=${signature.sampleSize}' : ''}',
+            style: const TextStyle(fontSize: 12, color: Colors.black54),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildLookupButton(DataProvider provider) {
+    final geneCount = provider.activeGenes.length;
+    return FilledButton.icon(
+      style: FilledButton.styleFrom(
+        backgroundColor: AppColors.primaryDark,
+        padding: const EdgeInsets.symmetric(vertical: 18),
+      ),
+      icon: const Icon(Icons.search),
+      label: Text(
+        geneCount == 0
+            ? 'Select genes to search'
+            : 'Search interactions for $geneCount gene'
+                '${geneCount == 1 ? '' : 's'}',
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      ),
+      onPressed:
+          geneCount == 0 ? null : () => _showFilterSheet(provider),
+    );
+  }
+
+  Widget _buildLabEntry() {
+    return Column(
+      children: [
+        OutlinedButton.icon(
+          icon: const Icon(Icons.upload_file),
+          label: const Text('Analyse my own study file',
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            side: const BorderSide(color: AppColors.primaryDark, width: 1.5),
+            foregroundColor: AppColors.primaryDark,
+          ),
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const LabScreen()),
+          ),
+        ),
+        const SizedBox(height: 10),
+        const Text(
+          'Upload a differential-expression table (CSV/TSV). '
+          'FDR correction is applied by default.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+      ],
+    );
+  }
+
+  void _handleSearch(DataProvider provider) {
+    final query = _searchController.text.trim();
+    if (query.isEmpty) return;
+    provider.searchDrugs(query);
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => DrugSearchScreen(searchQuery: query)),
+    );
+  }
+
+  Future<void> _showFilterSheet(DataProvider provider) async {
+    final hasDirection = !provider.isManualMode;
+    final filters = await showModalBottomSheet<InteractionFilters>(
       context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              backgroundColor: const Color(0xFFFFF8FB),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-              title: const Row(
-                children: [
-                  Icon(Icons.tune_rounded, color: Color(0xFFC2185B)),
-                  SizedBox(width: 12),
-                  Text('Precision Filters', style: TextStyle(color: Color(0xFFC2185B), fontWeight: FontWeight.bold)),
-                ],
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SwitchListTile(
-                    title: const Text('Target Novel Candidates Only', style: TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: const Text('Hide standard FDA-approved drugs for this indication', style: TextStyle(fontSize: 11)),
-                    secondary: Icon(onlyNovel ? Icons.star : Icons.star_border, color: Colors.amber),
-                    value: onlyNovel,
-                    activeColor: const Color(0xFFE91E63),
-                    onChanged: (v) => setState(() => onlyNovel = v),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Divider(),
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Minimum Evidence Score', style: TextStyle(fontWeight: FontWeight.w600)),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(color: const Color(0xFFC2185B).withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                        child: Text(minScore.toStringAsFixed(1), style: const TextStyle(color: Color(0xFFC2185B), fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Slider(
-                    value: minScore,
-                    min: 0.0,
-                    max: 10.0,
-                    divisions: 20,
-                    activeColor: const Color(0xFFC2185B),
-                    inactiveColor: Colors.pink.withOpacity(0.1),
-                    onChanged: (v) => setState(() => minScore = v),
-                  ),
-                  const Text('Low scores (0-1) show more hits. High scores (5+) show high-confidence results.', style: TextStyle(fontSize: 10, color: Colors.grey, fontStyle: FontStyle.italic)),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => _FilterSheet(
+        initial: provider.lastFilters,
+        hasExpressionDirection: hasDirection,
+      ),
+    );
+    if (filters == null || !mounted) return;
+
+    // Navigate first; the results screen renders the provider's loading and
+    // error states itself. This removes the blocking progress dialog, which had
+    // no timeout and could lock the app, and the `silent` flag that existed to
+    // stop a global loading toggle from unmounting this screen.
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const InteractionResultsScreen()),
+    );
+    provider.findInteractionsForGenes(filters: filters);
+  }
+}
+
+class _WarningLine extends StatelessWidget {
+  const _WarningLine({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Icon(Icons.warning_amber_rounded,
+            size: 16, color: Color(0xFFEF6C00)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(message,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF7A3E00))),
+        ),
+      ],
+    );
+  }
+}
+
+/// Filter sheet for an interaction lookup.
+///
+/// The score slider now spans the range the data actually occupies. The old
+/// 0-10 slider paired with a `score > 5.0` "high confidence" label described
+/// only 5% of records, so most of its travel had no effect.
+class _FilterSheet extends StatefulWidget {
+  const _FilterSheet({
+    required this.initial,
+    required this.hasExpressionDirection,
+  });
+
+  final InteractionFilters initial;
+
+  /// Whether the query carries fold changes, i.e. came from a signature rather
+  /// than a typed gene list. The directional filter is meaningless without it.
+  final bool hasExpressionDirection;
+
+  @override
+  State<_FilterSheet> createState() => _FilterSheetState();
+}
+
+class _FilterSheetState extends State<_FilterSheet> {
+  late bool _onlyUnapproved = widget.initial.onlyUnapproved;
+  late double _minScore = widget.initial.minScore;
+  late int _minSourceCount = widget.initial.minSourceCount;
+  late bool _onlyOpposing = widget.initial.onlyOpposing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 8,
+        bottom: 24 + MediaQuery.viewInsetsOf(context).bottom,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SectionHeading('Filters', icon: Icons.tune),
+            const SizedBox(height: 20),
+            if (widget.hasExpressionDirection)
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Opposing drugs only',
+                    style: TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: const Text(
+                  'Keeps drugs that act against the direction at least one of '
+                  'your genes moved. Drugs that reinforce the change are '
+                  'otherwise shown with a warning rather than hidden.',
+                  style: TextStyle(fontSize: 11, height: 1.35),
                 ),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _runAnalysis(context, provider, onlyNovel, minScore);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFC2185B),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                value: _onlyOpposing,
+                onChanged: (value) => setState(() => _onlyOpposing = value),
+              )
+            else
+              const _FilterNote(
+                'Genes were entered manually, so no expression direction is '
+                'available and the directional filter is unavailable.',
+              ),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Exclude approved drugs',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: const Text(
+                'Keeps only drugs no source database marks as approved. This '
+                'means "not FDA-approved" - it includes investigational and '
+                'discontinued compounds.',
+                style: TextStyle(fontSize: 11, height: 1.35),
+              ),
+              value: _onlyUnapproved,
+              onChanged: (value) => setState(() => _onlyUnapproved = value),
+            ),
+            const SizedBox(height: 16),
+            const Text('Minimum corroboration',
+                style: TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            SegmentedButton<int>(
+              segments: const [
+                ButtonSegment(value: 1, label: Text('Any')),
+                ButtonSegment(value: 2, label: Text('2+ sources')),
+                ButtonSegment(value: 3, label: Text('3+ sources')),
+              ],
+              selected: {_minSourceCount},
+              onSelectionChanged: (selection) =>
+                  setState(() => _minSourceCount = selection.first),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              switch (_minSourceCount) {
+                >= 3 => 'Strictest: 3.8% of records in the database qualify.',
+                2 => 'Recommended: 9.2% of records qualify.',
+                _ => '90.8% of records come from a single database.',
+              },
+              style: const TextStyle(fontSize: 11, color: Colors.black54),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Minimum documentation score',
+                    style: TextStyle(fontWeight: FontWeight.w600)),
+                Text(_minScore.toStringAsFixed(2),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primaryDark)),
+              ],
+            ),
+            Slider(
+              value: _minScore,
+              max: EvidenceStrength.wellDocumentedThreshold,
+              divisions: 21,
+              label: _minScore.toStringAsFixed(2),
+              onChanged: (value) => setState(() => _minScore = value),
+            ),
+            Text(
+              _scoreHint(_minScore),
+              style: const TextStyle(fontSize: 11, color: Colors.black54),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
                   ),
-                  child: const Text('Start AI Analysis', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primaryDark),
+                    onPressed: () => Navigator.pop(
+                      context,
+                      InteractionFilters(
+                        onlyUnapproved: _onlyUnapproved,
+                        minScore: _minScore,
+                        minSourceCount: _minSourceCount,
+                        onlyOpposing:
+                            widget.hasExpressionDirection && _onlyOpposing,
+                      ),
+                    ),
+                    child: const Text('Search'),
+                  ),
                 ),
               ],
-            );
-          },
-        );
-      },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  void _runAnalysis(BuildContext context, DataProvider provider, bool onlyNovel, double minScore) async {
-    // Show progress dialog using the stable scaffold context
-    final scaffoldContext = this.context;
-    
-    showDialog(
-      context: scaffoldContext, 
-      barrierDismissible: false, 
-      builder: (ctx) => const Center(child: CircularProgressIndicator())
-    );
-
-    try {
-      // Use silent: true to prevent global isLoading from unmounting the current screen
-      await provider.fetchRecommendationsFromDB(onlyNovel: onlyNovel, minScore: minScore, silent: true);
-      
-      if (mounted) {
-        Navigator.pop(scaffoldContext); // Close progress dialog
-        Navigator.push(scaffoldContext, MaterialPageRoute(builder: (_) => const AIRecommendationScreen()));
-      }
-    } catch (e) {
-      if (mounted) {
-        Navigator.pop(scaffoldContext); // Close progress dialog
-        ScaffoldMessenger.of(scaffoldContext).showSnackBar(
-          SnackBar(content: Text('Analysis Error: $e'), backgroundColor: Colors.red),
-        );
-      }
+  /// Percentile guidance measured on the 69,018 aggregated gene-drug pairs in
+  /// the bundled database.
+  static String _scoreHint(double value) {
+    if (value <= 0) return 'No score filter - all records included.';
+    if (value < EvidenceStrength.moderatelyDocumentedThreshold) {
+      return 'Below the 75th percentile of records.';
     }
+    if (value < 2.63) return 'Roughly the top 25% of records.';
+    if (value < EvidenceStrength.wellDocumentedThreshold) {
+      return 'Roughly the top 10% of records.';
+    }
+    return 'Top 5% of records - expect few results.';
+  }
+}
+
+/// Explanatory line shown in place of a filter that does not apply.
+class _FilterNote extends StatelessWidget {
+  const _FilterNote(this.message);
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(Icons.info_outline, size: 16, color: Colors.black45),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            message,
+            style: const TextStyle(
+                fontSize: 11.5, height: 1.4, color: Colors.black54),
+          ),
+        ),
+      ],
+    );
   }
 }

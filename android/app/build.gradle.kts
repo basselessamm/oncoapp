@@ -20,8 +20,7 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.onco_repurpose_ai"
+        applicationId = "com.oncorepurpose.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -30,11 +29,37 @@ android {
         versionName = flutter.versionName
     }
 
+    // Release signing reads from android/key.properties, which is gitignored.
+    // See android/key.properties.example. Until that file exists, release
+    // builds fall back to the debug key and log a warning; the previous
+    // configuration did so silently, and a debug-signed APK cannot be
+    // published to the Play Store.
+    signingConfigs {
+        create("release") {
+            val keystoreProperties = java.util.Properties()
+            val keystorePropertiesFile = rootProject.file("key.properties")
+            if (keystorePropertiesFile.exists()) {
+                keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
+                keyAlias = keystoreProperties["keyAlias"] as String?
+                keyPassword = keystoreProperties["keyPassword"] as String?
+                storeFile = keystoreProperties["storeFile"]?.let { file(it) }
+                storePassword = keystoreProperties["storePassword"] as String?
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (rootProject.file("key.properties").exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                // Debug-signed builds are usable for local testing only.
+                logger.warn(
+                    "android/key.properties not found: signing the release " +
+                        "build with the debug key. Do not distribute this artifact."
+                )
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }

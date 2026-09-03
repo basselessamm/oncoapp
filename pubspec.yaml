@@ -1,5 +1,7 @@
 name: onco_repurpose_ai
-description: A medical mobile application for cancer drug repurposing.
+description: >-
+  A research tool for browsing gene-drug interactions recorded in public
+  databases, for cancer transcriptomics. Research use only.
 
 publish_to: 'none'
 
@@ -19,6 +21,9 @@ dependencies:
   url_launcher: ^6.3.2
   file_picker: ^8.0.0+1
   csv: ^6.0.0
+  # Pinned exactly: this is the only dependency that sends data off-device, so
+  # upgrades should be deliberate rather than implicit.
+  http: 1.2.0
 
 dev_dependencies:
   flutter_test:
@@ -30,11 +35,17 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
+  # Individual files, not directories. Declaring the two data directories
+  # bundled roughly 8 MB that no code reads: basal_vs_normal_unfiltered.json
+  # (4.1 MB, 19,499 unfiltered genes, never loaded) and three raw .tsv source
+  # files (3.8 MB) kept in the repository for provenance.
   assets:
     - assets/icon.png
-    - assets/data/Breast_Invasive_Carcinoma_TCGA/
-    - assets/data/Triple_Negative_Breast_Cancer_DLDCCC/
     - assets/db/master_drugs.db
+    - assets/data/Breast_Invasive_Carcinoma_TCGA/tcga_signatures.json
+    - assets/data/Triple_Negative_Breast_Cancer_DLDCCC/basal_like1_vs_mesenchymal.json
+    - assets/data/Triple_Negative_Breast_Cancer_DLDCCC/immunomodulatory_vs_luminal_androgen.json
+    - assets/data/Triple_Negative_Breast_Cancer_DLDCCC/mesenchymal_vs_immunomodulatory.json
 
 flutter_launcher_icons:
   android: true

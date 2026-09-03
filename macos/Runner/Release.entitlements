@@ -4,5 +4,9 @@
 <dict>
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
+	<!-- Required for external target-disease lookups. Those are opt-in and off
+	     by default; every other feature runs against the bundled database. -->
+	<key>com.apple.security.network.client</key>
+	<true/>
 </dict>
 </plist>

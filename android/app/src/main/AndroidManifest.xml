@@ -1,6 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Required for external target-disease lookups. Those are opt-in and off
+         by default; every other feature runs against the bundled database, so
+         the app is fully usable with no network available. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="onco_repurpose_ai"
+        android:label="OncoRepurpose"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

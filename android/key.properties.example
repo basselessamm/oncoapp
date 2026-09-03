@@ -1,0 +1,15 @@
+# Release signing configuration.
+#
+# Copy this file to android/key.properties and fill in real values. That path is
+# gitignored, so the keystore and its passwords stay out of version control.
+#
+# Generate a keystore with:
+#   keytool -genkey -v -keystore upload-keystore.jks -keyalg RSA \
+#           -keysize 2048 -validity 10000 -alias upload
+#
+# storeFile is resolved relative to the android/app directory.
+
+storePassword=CHANGE_ME
+keyPassword=CHANGE_ME
+keyAlias=upload
+storeFile=../upload-keystore.jks

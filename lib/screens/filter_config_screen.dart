@@ -1,14 +1,13 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
+
 import '../services/study_analysis_service.dart';
+import '../widgets/evidence_widgets.dart';
 import 'analysis_result_screen.dart';
 
+/// Filter configuration for a user-uploaded differential-expression table.
 class FilterConfigScreen extends StatefulWidget {
-  final File file;
-  final String studyName;
-  final String pmid;
-  final int sampleSize;
-
   const FilterConfigScreen({
     super.key,
     required this.file,
@@ -17,68 +16,129 @@ class FilterConfigScreen extends StatefulWidget {
     required this.sampleSize,
   });
 
+  final File file;
+  final String studyName;
+  final String pmid;
+  final int sampleSize;
+
   @override
   State<FilterConfigScreen> createState() => _FilterConfigScreenState();
 }
 
 class _FilterConfigScreenState extends State<FilterConfigScreen> {
-  int _upCount = 25;
-  int _downCount = 5;
-  double _pValue = 0.05;
-  double _log2fc = 1.0;
+  // Defaults come from AnalysisConfig so the two cannot drift apart.
+  static const AnalysisConfig _defaults = AnalysisConfig();
+
+  int _upCount = _defaults.upCount;
+  int _downCount = _defaults.downCount;
+  double _pValue = _defaults.pValueThreshold;
+  double _log2fc = _defaults.minLog2FC;
+  MultipleTestingCorrection _correction = _defaults.correction;
+  bool _running = false;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('⚙️ Smart Filter')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildInfoCard(),
-            const SizedBox(height: 32),
-            _buildSectionHeader('🎯 GENE SELECTION', Icons.tune),
-            _buildCounter('Upregulated Genes', _upCount, (v) => setState(() => _upCount = v), 25),
-            _buildCounter('Downregulated Genes', _downCount, (v) => setState(() => _downCount = v), 5),
-            
-            const SizedBox(height: 32),
-            _buildSectionHeader('🔬 STATISTICAL FILTERS', Icons.analytics),
-            _buildPValueSelector(),
-            _buildFCSelector(),
-            
-            const SizedBox(height: 48),
-            ElevatedButton(
-              onPressed: () => _analyze(),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFC2185B),
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      appBar: AppBar(title: const Text('Analysis Settings')),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildFileCard(),
+              const SizedBox(height: 28),
+              const SectionHeading('Significance', icon: Icons.analytics),
+              const SizedBox(height: 16),
+              _buildCorrectionSelector(),
+              const SizedBox(height: 20),
+              _buildPValueSelector(),
+              const SizedBox(height: 20),
+              _buildFoldChangeSlider(),
+              const SizedBox(height: 32),
+              const SectionHeading('Genes to keep', icon: Icons.tune),
+              const SizedBox(height: 8),
+              const Text(
+                'Genes are ranked by absolute fold change within each '
+                'direction, then truncated.',
+                style: TextStyle(
+                    fontSize: 12, height: 1.4, color: Colors.black54),
               ),
-              child: const Text('🚀 Run Analysis', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-            ),
-          ],
+              const SizedBox(height: 16),
+              _buildCounter(
+                'Upregulated',
+                _upCount,
+                (value) => setState(() => _upCount = value),
+              ),
+              _buildCounter(
+                'Downregulated',
+                _downCount,
+                (value) => setState(() => _downCount = value),
+              ),
+              if (_upCount != _downCount) ...[
+                const SizedBox(height: 4),
+                const Text(
+                  'Asymmetric limits bias the signature toward one direction. '
+                  'Keep them equal unless the study design justifies '
+                  'otherwise.',
+                  style: TextStyle(fontSize: 11, color: Color(0xFF7A3E00)),
+                ),
+              ],
+              const SizedBox(height: 36),
+              FilledButton.icon(
+                onPressed: _running ? null : _analyze,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primaryDark,
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                ),
+                icon: _running
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.play_arrow),
+                label: Text(_running ? 'Analysing...' : 'Run analysis',
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildInfoCard() {
+  Widget _buildFileCard() {
+    final fileName = widget.file.uri.pathSegments.isEmpty
+        ? widget.file.path
+        : widget.file.uri.pathSegments.last;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.blue.shade50,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blue.shade100),
+        border: Border.all(color: Colors.grey.shade200),
       ),
       child: Row(
         children: [
-          const Icon(Icons.info_outline, color: Colors.blue),
+          const Icon(Icons.description_outlined,
+              color: AppColors.primary),
           const SizedBox(width: 16),
           Expanded(
-            child: Text(
-              'Analyzing: ${widget.studyName}\nFile: ${widget.file.path.split(Platform.pathSeparator).last}',
-              style: const TextStyle(fontSize: 13, color: Colors.blueGrey),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(widget.studyName,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600, fontSize: 14)),
+                const SizedBox(height: 2),
+                Text(fileName,
+                    style: const TextStyle(
+                        fontSize: 12, color: Colors.black54)),
+              ],
             ),
           ),
         ],
@@ -86,66 +146,48 @@ class _FilterConfigScreenState extends State<FilterConfigScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: const Color(0xFFC2185B)),
-          const SizedBox(width: 8),
-          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFC2185B))),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCounter(String label, int value, Function(int) onChanged, int recommended) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(label),
-              if (value == recommended)
-                const Text('⭐ Recommended', style: TextStyle(fontSize: 11, color: Colors.amber, fontWeight: FontWeight.bold)),
-            ],
+  Widget _buildCorrectionSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Multiple-testing correction',
+            style: TextStyle(fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        ...MultipleTestingCorrection.values.map(
+          (correction) => RadioListTile<MultipleTestingCorrection>(
+            contentPadding: EdgeInsets.zero,
+            value: correction,
+            // ignore: deprecated_member_use
+            groupValue: _correction,
+            // ignore: deprecated_member_use
+            onChanged: (value) {
+              if (value != null) setState(() => _correction = value);
+            },
+            title: Text(correction.label,
+                style: const TextStyle(fontSize: 14)),
+            subtitle: Text(correction.explanation,
+                style: const TextStyle(fontSize: 11, height: 1.35)),
           ),
-          Row(
-            children: [
-              IconButton(onPressed: value > 0 ? () => onChanged(value - 1) : null, icon: const Icon(Icons.remove_circle_outline)),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
-                  child: Text(value.toString(), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ),
-              IconButton(onPressed: () => onChanged(value + 1), icon: const Icon(Icons.add_circle_outline)),
-            ],
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   Widget _buildPValueSelector() {
+    final isAdjusted = _correction != MultipleTestingCorrection.none;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('P-Value Threshold'),
+        Text(isAdjusted ? 'Adjusted p-value cutoff' : 'Raw p-value cutoff',
+            style: const TextStyle(fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
-          children: [0.05, 0.01, 0.001].map((v) {
-            bool selected = _pValue == v;
+          children: [0.05, 0.01, 0.001].map((threshold) {
             return ChoiceChip(
-              label: Text('p < $v ${v == 0.05 ? "⭐" : ""}'),
-              selected: selected,
-              onSelected: (s) => setState(() => _pValue = v),
-              selectedColor: const Color(0xFFF48FB1),
+              label: Text('p <= $threshold'),
+              selected: _pValue == threshold,
+              onSelected: (_) => setState(() => _pValue = threshold),
             );
           }).toList(),
         ),
@@ -153,61 +195,119 @@ class _FilterConfigScreenState extends State<FilterConfigScreen> {
     );
   }
 
-  Widget _buildFCSelector() {
+  Widget _buildFoldChangeSlider() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Min |Log2FC|'),
-            Text(_log2fc.toStringAsFixed(1), style: const TextStyle(fontWeight: FontWeight.bold)),
+            const Text('Minimum |log2FC|',
+                style: TextStyle(fontWeight: FontWeight.w600)),
+            Text(_log2fc.toStringAsFixed(1),
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primaryDark)),
           ],
         ),
         Slider(
           value: _log2fc,
-          min: 0.0,
           max: 5.0,
           divisions: 50,
-          activeColor: const Color(0xFFE91E63),
-          onChanged: (v) => setState(() => _log2fc = v),
+          label: _log2fc.toStringAsFixed(1),
+          onChanged: (value) => setState(() => _log2fc = value),
+        ),
+        Text(
+          _log2fc == 0
+              ? 'No effect-size filter.'
+              : 'Keeps genes changing at least '
+                  '${_foldChangeLabel(_log2fc)}-fold in either direction.',
+          style: const TextStyle(fontSize: 11, color: Colors.black54),
         ),
       ],
     );
   }
 
-  void _analyze() async {
-    showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
-    
-    try {
-      final config = AnalysisConfig(
-        upCount: _upCount,
-        downCount: _downCount,
-        pValueThreshold: _pValue,
-        minLog2FC: _log2fc,
-      );
+  static String _foldChangeLabel(double log2fc) {
+    final fold = 1 << log2fc.floor();
+    return log2fc == log2fc.floorToDouble()
+        ? '$fold'
+        : '~${(fold * (1 + (log2fc - log2fc.floorToDouble()))).toStringAsFixed(1)}';
+  }
 
+  Widget _buildCounter(String label, int value, ValueChanged<int> onChanged) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Expanded(child: Text(label)),
+          IconButton(
+            tooltip: 'Decrease $label',
+            onPressed: value > 0 ? () => onChanged(value - 1) : null,
+            icon: const Icon(Icons.remove_circle_outline),
+          ),
+          SizedBox(
+            width: 56,
+            child: Text('$value',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          IconButton(
+            tooltip: 'Increase $label',
+            onPressed: value < 500 ? () => onChanged(value + 1) : null,
+            icon: const Icon(Icons.add_circle_outline),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _analyze() async {
+    setState(() => _running = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+
+    try {
       final signature = await StudyAnalysisService.analyzeStudy(
         file: widget.file,
         studyName: widget.studyName,
         pmid: widget.pmid,
         sampleSize: widget.sampleSize,
-        config: config,
+        config: AnalysisConfig(
+          upCount: _upCount,
+          downCount: _downCount,
+          pValueThreshold: _pValue,
+          minLog2FC: _log2fc,
+          correction: _correction,
+        ),
       );
 
-      if (mounted) {
-        Navigator.pop(context); // Close loader
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => AnalysisResultScreen(signature: signature)),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
-      }
+      if (!mounted) return;
+      setState(() => _running = false);
+      navigator.push(
+        MaterialPageRoute(
+          builder: (_) => AnalysisResultScreen(signature: signature),
+        ),
+      );
+    } on StudyAnalysisException catch (error) {
+      if (!mounted) return;
+      setState(() => _running = false);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(error.message),
+          backgroundColor: const Color(0xFFC62828),
+          duration: const Duration(seconds: 6),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _running = false);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Unexpected error: $error'),
+          backgroundColor: const Color(0xFFC62828),
+        ),
+      );
     }
   }
 }
